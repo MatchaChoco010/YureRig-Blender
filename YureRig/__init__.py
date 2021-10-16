@@ -1,0 +1,30 @@
+# -*- coding: utf-8 -*-
+import bpy
+from . import auto_load
+from . import yurerig
+
+bl_info = {
+    "name": "YureRig",
+    "author": "Orito Itsuki",
+    "description": "",
+    "blender": (2, 93, 5),
+    "version": (0, 0, 1),
+    "location": "VIEW_3D > <<Addon Tab>>",
+    "description": "Create rig for \"Yuremono\"",
+    "warning": "",
+    "doc_url": "https://github.com/MatchaChoco010/YureRig-Blender",
+    "tracker_url": "https://github.com/MatchaChoco010/YureRig-Blender/issues",
+    "category": "Rigging"
+}
+auto_load.init()
+
+
+def register():
+    auto_load.register()
+    yurerig.register_props()
+    yurerig.update_panel(None, bpy.context)
+
+
+def unregister():
+    auto_load.unregister()
+    yurerig.unregister_props()
