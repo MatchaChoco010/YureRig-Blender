@@ -1,11 +1,12 @@
-import bpy
-from types import ModuleType
-import typing
-from typing import Iterable, Set, Dict, Any, List, Optional, Union, Type
+import importlib
 import inspect
 import pkgutil
-import importlib
+import typing
 from pathlib import Path
+from types import ModuleType
+from typing import Any, Dict, Iterable, List, Optional, Set, Type, Union
+
+import bpy
 
 __all__ = (
     "init",

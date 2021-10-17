@@ -1,6 +1,6 @@
 import bpy
-from . import auto_load
-from . import yurerig
+
+from . import auto_load, yurerig
 
 bl_info = {
     "name": "YureRig",
