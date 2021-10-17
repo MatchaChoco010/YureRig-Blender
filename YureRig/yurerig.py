@@ -1,6 +1,6 @@
 import math
 import re
-from typing import List, Optional
+from typing import List, Optional, Set
 
 import bpy
 from mathutils import Vector
@@ -63,7 +63,12 @@ class YURERIG_Props(bpy.types.PropertyGroup):
     """
 
     param: bpy.props.BoolProperty(default=False, name="Check Box")  # type: ignore
-    controller_radius: bpy.props.FloatProperty(default=0.2)  # type: ignore
+    controller_bone_radius: bpy.props.FloatProperty(  # type: ignore
+        default=0.2, name="Controller Bone Radius"
+    )
+    controller_slider_size: bpy.props.FloatProperty(  # type: ignore
+        default=0.5, name="Controller Slider Size"
+    )
     root_collection: bpy.props.PointerProperty(  # type: ignore
         type=bpy.types.Collection
     )
@@ -205,7 +210,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         self, name: str, head: Vector, tail: Vector
     ) -> bpy.types.Object:
         length = (head - tail).length
-        radius = bpy.context.scene.yurerig.controller_radius
+        radius = bpy.context.scene.yurerig.controller_bone_radius
         verts: List[Vector] = []
         for i in range(6):
             theta = math.radians(i * 60)
@@ -264,7 +269,68 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         mesh.update(calc_edges=True)
         obj.data = mesh
 
-    def execute(self, context):
+    def make_slider_root(
+        self, name: str, fk: bpy.types.Object, phys: bpy.types.Object
+    ) -> bpy.types.Object:
+        slider_size = bpy.context.scene.yurerig.controller_slider_size
+        slider_gap = slider_size / 6
+        slider_body = slider_size / 6 * 2
+        verts: List[Vector] = []
+        for i in range(7):
+            theta = math.radians(i * 30)
+            verts.append(
+                Vector((math.cos(theta) * slider_gap, 0, -math.sin(theta) * slider_gap))
+            )
+        for i in range(7):
+            theta = math.radians(i * 30)
+            verts.append(
+                Vector(
+                    (
+                        math.cos(theta) * slider_gap,
+                        0,
+                        slider_body + math.sin(theta) * slider_gap,
+                    )
+                )
+            )
+
+        faces = [[0, 1, 2, 3, 4, 5, 6, 13, 12, 11, 10, 9, 8, 7]]
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(verts, [], faces)
+        mesh.update(calc_edges=True)
+        obj = bpy.data.objects.new(name, object_data=mesh)
+        obj.display_type = "WIRE"
+        bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
+
+        bpy.context.scene.collection.objects.link(obj)
+        bpy.ops.object.mode_set(mode="OBJECT")
+        for o in bpy.context.view_layer.objects:
+            o.select_set(o == obj or o == fk or o == phys)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.join({"active_object": obj, "selected_objects": [obj, fk, phys]})
+        bpy.context.scene.collection.objects.unlink(obj)
+
+        return obj
+
+    def make_slider_obj(self, name: str) -> bpy.types.Object:
+        slider_size = bpy.context.scene.yurerig.controller_slider_size
+        radius = slider_size / 7.5
+        verts: List[Vector] = []
+        for i in range(12):
+            theta = math.radians(i * 30)
+            verts.append(
+                Vector((math.cos(theta) * radius, 0, -math.sin(theta) * radius))
+            )
+
+        faces = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]]
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(verts, [], faces)
+        mesh.update(calc_edges=True)
+        obj = bpy.data.objects.new(name, object_data=mesh)
+        obj.display_type = "WIRE"
+        bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
+        return obj
+
+    def execute(self, context: bpy.types.Object) -> Set[str]:
         self.init_collection()
 
         armature: bpy.types.Object = context.active_object
@@ -274,9 +340,121 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         bone_tree = BoneRelation.get_bone_tree(selected_bones, active_bone)
 
         def_bones: List[bpy.types.PoseBone] = []
+        deco_bones: List[bpy.types.PoseBone] = []
+        phys_bones: List[bpy.types.PoseBone] = []
         ctrl_bones: List[bpy.types.PoseBone] = []
 
         armature.data.layers = [layer == 0 or layer == 8 for layer in range(32)]
+
+        # Setup physics influence slider
+        slider_size = context.scene.yurerig.controller_slider_size
+        slider_gap = slider_size / 6 * 2
+
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+        deco_phys_curve = bpy.data.curves.new(type="FONT", name="DECO_PHYS")
+        deco_phys_curve.align_x = "CENTER"
+        deco_phys_curve.align_y = "TOP"
+        deco_phys_curve.size = slider_size / 6
+        deco_phys = bpy.data.objects.new("DECO_PHYS", object_data=deco_phys_curve)
+        deco_phys.data.body = "PHYS"
+        deco_phys.location = Vector((0, 0, slider_size * 4 / 6))
+        deco_phys.rotation_euler = Vector((math.radians(90), 0, 0))
+        context.scene.collection.objects.link(deco_phys)
+        for o in context.view_layer.objects:
+            o.select_set(o == deco_phys)
+        context.view_layer.objects.active = deco_phys
+        bpy.ops.object.convert(target="MESH")
+        context.scene.yurerig.controllers_collection.objects.link(deco_phys)
+
+        deco_fk_curve = bpy.data.curves.new(type="FONT", name="DECO_FK")
+        deco_fk_curve.align_x = "CENTER"
+        deco_fk_curve.align_y = "TOP"
+        deco_fk_curve.size = slider_size / 6
+        deco_fk = bpy.data.objects.new("DECO_FK", object_data=deco_fk_curve)
+        deco_fk.data.body = "FK"
+        deco_fk.location = Vector((0, 0, -slider_size / 6))
+        deco_fk.rotation_euler = Vector((math.radians(90), 0, 0))
+        context.scene.collection.objects.link(deco_fk)
+        for o in context.view_layer.objects:
+            o.select_set(o == deco_fk)
+        context.view_layer.objects.active = deco_fk
+        bpy.ops.object.convert(target="MESH")
+        context.scene.yurerig.controllers_collection.objects.link(deco_fk)
+
+        context.view_layer.objects.active = armature
+
+        bpy.ops.object.mode_set(mode="EDIT")
+        i = 0
+        physics_influence_slider_root_name = f"DECO_physics_influence_slider_root_{i}"
+        physics_influence_slider_name = f"CTRL_physics_influence_slider_{i}"
+        while physics_influence_slider_root_name in armature.data.bones:
+            i += 1
+            physics_influence_slider_root_name = (
+                f"DECO_physics_influence_slider_root_{i}"
+            )
+            physics_influence_slider_name = f"CTRL_physics_influence_slider_{i}"
+        physics_influence_slider_root_bone = armature.data.edit_bones.new(
+            physics_influence_slider_root_name
+        )
+        physics_influence_slider_bone = armature.data.edit_bones.new(
+            physics_influence_slider_name
+        )
+        physics_influence_slider_root_bone.head = Vector(
+            (1, 0, (slider_size + slider_gap) * i + slider_gap)
+        )
+        physics_influence_slider_root_bone.tail = Vector(
+            (1, 1, (slider_size + slider_gap) * i + slider_gap)
+        )
+        physics_influence_slider_root_bone.show_wire = True
+        physics_influence_slider_bone.head = Vector(
+            (1, 0, (slider_size + slider_gap) * i + slider_gap)
+        )
+        physics_influence_slider_bone.tail = Vector(
+            (1, 1, (slider_size + slider_gap) * i + slider_gap)
+        )
+        physics_influence_slider_bone.show_wire = True
+        physics_influence_slider_bone.use_connect = False
+        physics_influence_slider_bone.parent = physics_influence_slider_root_bone
+
+        armature.update_from_editmode()
+        bpy.ops.object.mode_set(mode="POSE")
+
+        armature.pose.bones[
+            physics_influence_slider_root_name
+        ].custom_shape = self.make_slider_root(
+            physics_influence_slider_root_name, deco_fk, deco_phys
+        )
+        deco_bones.append(armature.pose.bones[physics_influence_slider_root_name])
+        physics_influence_slider_pose_bone = armature.pose.bones[
+            physics_influence_slider_name
+        ]
+        max_slider_value = slider_size * 2 / 6
+        physics_influence_slider_pose_bone["Max Slider Value"] = max_slider_value
+        physics_influence_slider_pose_bone.custom_shape = self.make_slider_obj(
+            physics_influence_slider_name
+        )
+        physics_influence_slider_limit_location = (
+            physics_influence_slider_pose_bone.constraints.new("LIMIT_LOCATION")
+        )
+        physics_influence_slider_limit_location.use_max_x = True
+        physics_influence_slider_limit_location.max_x = 0
+        physics_influence_slider_limit_location.use_min_x = True
+        physics_influence_slider_limit_location.min_x = 0
+        physics_influence_slider_limit_location.use_max_y = True
+        physics_influence_slider_limit_location.max_y = 0
+        physics_influence_slider_limit_location.use_min_y = True
+        physics_influence_slider_limit_location.min_y = 0
+        physics_influence_slider_limit_location.use_max_z = True
+        physics_influence_slider_limit_location.max_z = (
+            physics_influence_slider_pose_bone["Max Slider Value"]
+        )
+        physics_influence_slider_limit_location.use_min_z = True
+        physics_influence_slider_limit_location.min_z = 0
+        physics_influence_slider_limit_location.use_transform_limit = True
+        physics_influence_slider_limit_location.owner_space = "LOCAL_WITH_PARENT"
+
+        context.view_layer.objects.active = armature
 
         bpy.ops.object.mode_set(mode="EDIT")
 
@@ -335,10 +513,41 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 ctrl_bones.append(ctrl_pose_bone)
                 ctrl_bone.layers = [layer == 8 for layer in range(32)]
 
+                # Add a CTRL_ constraint
+                ctrl_constraint = child_bone.constraints.new("COPY_TRANSFORMS")
+                ctrl_constraint.target = armature
+                ctrl_constraint.subtarget = ctrl_name
+                ctrl_influence_driver = ctrl_constraint.driver_add("influence")
+                ctrl_influence_driver.driver.type = "SCRIPTED"
+                var = ctrl_influence_driver.driver.variables.new()
+                var.name = "locZ"
+                var.type = "SINGLE_PROP"
+                var.targets[0].id = armature
+                var.targets[
+                    0
+                ].data_path = (
+                    f'pose.bones.["{physics_influence_slider_name}"].location[2]'
+                )
+                ctrl_influence_driver.driver.expression = (
+                    f"1 - locZ / {max_slider_value}"
+                )
+
         bpy.ops.object.mode_set(mode="POSE")
 
-        # Set DEF_ and PHYS_ bone non selectable
+        # SET DECO_, CTRL_ and PHYS_ bone not use deform
+        for b in deco_bones:
+            b.bone.use_deform = False
+        for b in ctrl_bones:
+            b.bone.use_deform = False
+        for b in phys_bones:
+            b.bone.use_deform = False
+
+        # Set DEF_, DECO_ and PHYS_ bone non selectable
         for b in def_bones:
+            b.bone.hide_select = True
+        for b in deco_bones:
+            b.bone.hide_select = True
+        for b in phys_bones:
             b.bone.hide_select = True
 
         # Select CTRL_ bones
@@ -347,6 +556,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         for b in ctrl_bones:
             b.bone.select = True
         armature.data.bones.active = active_bone.bone
+
         return {"FINISHED"}
 
 
@@ -369,7 +579,8 @@ class YURERIG_PT_PanelUI(bpy.types.Panel):
         props = context.scene.yurerig
 
         col = self.layout.column()
-        col.prop(props, "controller_radius")
+        col.prop(props, "controller_bone_radius")
+        col.prop(props, "controller_slider_size")
         col.operator("orito_itsuki.yurerig_setup")
 
         col.separator()
