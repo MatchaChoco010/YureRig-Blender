@@ -64,10 +64,10 @@ class YURERIG_Props(bpy.types.PropertyGroup):
 
     param: bpy.props.BoolProperty(default=False, name="Check Box")  # type: ignore
     controller_bone_radius: bpy.props.FloatProperty(  # type: ignore
-        default=0.2, name="Controller Bone Radius"
+        default=0.05, name="Controller Bone Radius"
     )
     controller_slider_size: bpy.props.FloatProperty(  # type: ignore
-        default=0.5, name="Controller Slider Size"
+        default=0.25, name="Controller Slider Size"
     )
     root_collection: bpy.props.PointerProperty(  # type: ignore
         type=bpy.types.Collection
@@ -76,6 +76,9 @@ class YURERIG_Props(bpy.types.PropertyGroup):
         type=bpy.types.Collection
     )
     rigidbodies_collection: bpy.props.PointerProperty(  # type: ignore
+        type=bpy.types.Collection
+    )
+    rigidbodies_reset_goal_collection: bpy.props.PointerProperty(  # type: ignore
         type=bpy.types.Collection
     )
     controllers_collection: bpy.props.PointerProperty(  # type: ignore
@@ -192,6 +195,21 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 props.root_collection.children.link(props.rigidbodies_collection)
             props.rigidbodies_collection.hide_viewport = True
             props.rigidbodies_collection.hide_render = True
+
+        if props.rigidbodies_reset_goal_collection is None:
+            if "YureRig RigidBodies Reset Goal" in bpy.data.collections:
+                props.rigidbodies_reset_goal_collection = bpy.data.collections[
+                    "YureRig RigidBodies Reset Goall"
+                ]
+            else:
+                props.rigidbodies_reset_goal_collection = bpy.data.collections.new(
+                    name="YureRig RigidBodies Reset Goal"
+                )
+                props.root_collection.children.link(
+                    props.rigidbodies_reset_goal_collection
+                )
+            props.rigidbodies_reset_goal_collection.hide_viewport = True
+            props.rigidbodies_reset_goal_collection.hide_render = True
 
         if props.controllers_collection is None:
             if "YureRig Controller Objects" in bpy.data.collections:
@@ -579,13 +597,13 @@ class YURERIG_PT_PanelUI(bpy.types.Panel):
         props = context.scene.yurerig
 
         col = self.layout.column()
+        col.label(text="Controller Parameter")
         col.prop(props, "controller_bone_radius")
         col.prop(props, "controller_slider_size")
-        col.operator("orito_itsuki.yurerig_setup")
+
+        col.label(text="RigidBodies Parameter")
+
+        col.label(text="RigidBody Joints Parameter")
 
         col.separator()
-        col.label(text="YureRig Collections")
-        col.prop_search(props, "root_collection", bpy.data, "collections")
-        col.prop_search(props, "joints_collection", bpy.data, "collections")
-        col.prop_search(props, "rigidbodies_collection", bpy.data, "collections")
-        col.prop_search(props, "controllers_collection", bpy.data, "collections")
+        col.operator("orito_itsuki.yurerig_setup")
