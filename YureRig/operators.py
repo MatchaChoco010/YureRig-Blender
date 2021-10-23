@@ -104,6 +104,96 @@ def set_joint_properties(joint: bpy.types.RigidBodyConstraint) -> None:
     joint.spring_damping_z = props.rigidbody_joint_linear_spring_damping_z
 
 
+def make_slider_root(
+    name: str, fk: bpy.types.Object, phys: bpy.types.Object
+) -> bpy.types.Object:
+    slider_size = bpy.context.scene.yurerig.controller_slider_size
+    slider_gap = slider_size / 6
+    slider_body = slider_size / 6 * 2
+    verts: List[Vector] = []
+    for i in range(7):
+        theta = math.radians(i * 30)
+        verts.append(
+            Vector((math.cos(theta) * slider_gap, 0, -math.sin(theta) * slider_gap))
+        )
+    for i in range(7):
+        theta = math.radians(i * 30)
+        verts.append(
+            Vector(
+                (
+                    math.cos(theta) * slider_gap,
+                    0,
+                    slider_body + math.sin(theta) * slider_gap,
+                )
+            )
+        )
+
+    faces = [[0, 1, 2, 3, 4, 5, 6, 13, 12, 11, 10, 9, 8, 7]]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update(calc_edges=True)
+    obj = bpy.data.objects.new(name, object_data=mesh)
+    obj.display_type = "WIRE"
+    bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
+
+    bpy.context.scene.collection.objects.link(obj)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    for o in bpy.context.view_layer.objects:
+        o.select_set(o == obj or o == fk or o == phys)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.join({"active_object": obj, "selected_objects": [obj, fk, phys]})
+    bpy.context.scene.collection.objects.unlink(obj)
+
+    return obj
+
+
+def make_slider_obj(name: str) -> bpy.types.Object:
+    slider_size = bpy.context.scene.yurerig.controller_slider_size
+    radius = slider_size / 7.5
+    verts: List[Vector] = []
+    for i in range(12):
+        theta = math.radians(i * 30)
+        verts.append(Vector((math.cos(theta) * radius, 0, -math.sin(theta) * radius)))
+
+    faces = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update(calc_edges=True)
+    obj = bpy.data.objects.new(name, object_data=mesh)
+    obj.display_type = "WIRE"
+    bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
+    return obj
+
+
+def make_controller_object(name: str, head: Vector, tail: Vector) -> bpy.types.Object:
+    length = (head - tail).length
+    radius = bpy.context.scene.yurerig.controller_bone_radius
+    verts: List[Vector] = []
+    for i in range(6):
+        theta = math.radians(i * 60)
+        verts.append(Vector((math.cos(theta) * radius, 0, math.sin(theta) * radius)))
+        verts.append(
+            Vector((math.cos(theta) * radius, length, math.sin(theta) * radius))
+        )
+    faces = [
+        [0, 1, 3, 2],
+        [2, 3, 5, 4],
+        [4, 5, 7, 6],
+        [6, 7, 9, 8],
+        [8, 9, 11, 10],
+        [10, 11, 1, 0],
+        [0, 2, 4, 6, 8, 10],
+        [1, 3, 5, 7, 9, 11],
+    ]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update(calc_edges=True)
+    obj = bpy.data.objects.new(name, object_data=mesh)
+    obj.display_type = "WIRE"
+    bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
+    return obj
+
+
 class YURERIG_OT_SetupOperator(bpy.types.Operator):
     """
     Setup DEF_ bones, CTRL_ bones and PHYS_ bones, add rigidbody objects and
@@ -187,38 +277,6 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
             props.controllers_collection.hide_viewport = True
             props.controllers_collection.hide_render = True
 
-    def make_controller_object(
-        self, name: str, head: Vector, tail: Vector
-    ) -> bpy.types.Object:
-        length = (head - tail).length
-        radius = bpy.context.scene.yurerig.controller_bone_radius
-        verts: List[Vector] = []
-        for i in range(6):
-            theta = math.radians(i * 60)
-            verts.append(
-                Vector((math.cos(theta) * radius, 0, math.sin(theta) * radius))
-            )
-            verts.append(
-                Vector((math.cos(theta) * radius, length, math.sin(theta) * radius))
-            )
-        faces = [
-            [0, 1, 3, 2],
-            [2, 3, 5, 4],
-            [4, 5, 7, 6],
-            [6, 7, 9, 8],
-            [8, 9, 11, 10],
-            [10, 11, 1, 0],
-            [0, 2, 4, 6, 8, 10],
-            [1, 3, 5, 7, 9, 11],
-        ]
-        mesh = bpy.data.meshes.new(name)
-        mesh.from_pydata(verts, [], faces)
-        mesh.update(calc_edges=True)
-        obj = bpy.data.objects.new(name, object_data=mesh)
-        obj.display_type = "WIRE"
-        bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
-        return obj
-
     def update_controller_object_radius(
         self, obj: bpy.types.Object, head: Vector, tail: Vector
     ) -> None:
@@ -249,67 +307,6 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         mesh.from_pydata(verts, [], faces)
         mesh.update(calc_edges=True)
         obj.data = mesh
-
-    def make_slider_root(
-        self, name: str, fk: bpy.types.Object, phys: bpy.types.Object
-    ) -> bpy.types.Object:
-        slider_size = bpy.context.scene.yurerig.controller_slider_size
-        slider_gap = slider_size / 6
-        slider_body = slider_size / 6 * 2
-        verts: List[Vector] = []
-        for i in range(7):
-            theta = math.radians(i * 30)
-            verts.append(
-                Vector((math.cos(theta) * slider_gap, 0, -math.sin(theta) * slider_gap))
-            )
-        for i in range(7):
-            theta = math.radians(i * 30)
-            verts.append(
-                Vector(
-                    (
-                        math.cos(theta) * slider_gap,
-                        0,
-                        slider_body + math.sin(theta) * slider_gap,
-                    )
-                )
-            )
-
-        faces = [[0, 1, 2, 3, 4, 5, 6, 13, 12, 11, 10, 9, 8, 7]]
-        mesh = bpy.data.meshes.new(name)
-        mesh.from_pydata(verts, [], faces)
-        mesh.update(calc_edges=True)
-        obj = bpy.data.objects.new(name, object_data=mesh)
-        obj.display_type = "WIRE"
-        bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
-
-        bpy.context.scene.collection.objects.link(obj)
-        bpy.ops.object.mode_set(mode="OBJECT")
-        for o in bpy.context.view_layer.objects:
-            o.select_set(o == obj or o == fk or o == phys)
-        bpy.context.view_layer.objects.active = obj
-        bpy.ops.object.join({"active_object": obj, "selected_objects": [obj, fk, phys]})
-        bpy.context.scene.collection.objects.unlink(obj)
-
-        return obj
-
-    def make_slider_obj(self, name: str) -> bpy.types.Object:
-        slider_size = bpy.context.scene.yurerig.controller_slider_size
-        radius = slider_size / 7.5
-        verts: List[Vector] = []
-        for i in range(12):
-            theta = math.radians(i * 30)
-            verts.append(
-                Vector((math.cos(theta) * radius, 0, -math.sin(theta) * radius))
-            )
-
-        faces = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]]
-        mesh = bpy.data.meshes.new(name)
-        mesh.from_pydata(verts, [], faces)
-        mesh.update(calc_edges=True)
-        obj = bpy.data.objects.new(name, object_data=mesh)
-        obj.display_type = "WIRE"
-        bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
-        return obj
 
     def make_phys_bone_object(
         self, name: str, head: Vector, tail: Vector
@@ -638,6 +635,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         )
         physics_influence_slider_bone.show_wire = True
         physics_influence_slider_bone.use_connect = False
+        physics_influence_slider_bone.use_deform = False
         physics_influence_slider_bone.parent = physics_influence_slider_root_bone
 
         armature.update_from_editmode()
@@ -645,7 +643,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
 
         armature.pose.bones[
             physics_influence_slider_root_name
-        ].custom_shape = self.make_slider_root(
+        ].custom_shape = make_slider_root(
             physics_influence_slider_root_name, deco_fk, deco_phys
         )
         deco_bones.append(armature.pose.bones[physics_influence_slider_root_name])
@@ -654,7 +652,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         ]
         max_slider_value = slider_size * 2 / 6
         physics_influence_slider_pose_bone["Max Slider Value"] = max_slider_value
-        physics_influence_slider_pose_bone.custom_shape = self.make_slider_obj(
+        physics_influence_slider_pose_bone.custom_shape = make_slider_obj(
             physics_influence_slider_name
         )
         physics_influence_slider_limit_location = (
@@ -669,9 +667,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         physics_influence_slider_limit_location.use_min_y = True
         physics_influence_slider_limit_location.min_y = 0
         physics_influence_slider_limit_location.use_max_z = True
-        physics_influence_slider_limit_location.max_z = (
-            physics_influence_slider_pose_bone["Max Slider Value"]
-        )
+        physics_influence_slider_limit_location.max_z = max_slider_value
         physics_influence_slider_limit_location.use_min_z = True
         physics_influence_slider_limit_location.min_z = 0
         physics_influence_slider_limit_location.use_transform_limit = True
@@ -756,7 +752,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 ctrl_pose_bone = armature.pose.bones[ctrl_name]
                 ctrl_pose_bone.bone_group = ctrl_bone_group
                 if ctrl_pose_bone.custom_shape is None:
-                    ctrl_obj = self.make_controller_object(
+                    ctrl_obj = make_controller_object(
                         f"{ctrl_name}_ControllerBoneShape",
                         ctrl_bone.head,
                         ctrl_bone.tail,
@@ -783,10 +779,16 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 var.targets[0].bone_target = physics_influence_slider_name
                 var.targets[0].transform_space = "LOCAL_SPACE"
                 var.targets[0].transform_type = "LOC_Z"
-                ctrl_influence_driver.driver.expression = "locZ == 0"
-                ctrl_influence_driver.driver.expression = (
-                    f"1 - locZ / {max_slider_value}"
+                max_var = ctrl_influence_driver.driver.variables.new()
+                max_var.name = "maxLocZ"
+                max_var.type = "SINGLE_PROP"
+                max_var.targets[0].id = armature
+                max_var.targets[0].data_path = (
+                    'pose.bones["CTRL_physics_influence_slider_0_BoneShape"]'
+                    + '["Max Slider Value"]'
                 )
+                ctrl_influence_driver.driver.expression = "locZ == 0"
+                ctrl_influence_driver.driver.expression = "1 - locZ / maxLocZ"
 
         # Setup rigid body world
         if (
@@ -1098,6 +1100,266 @@ class YURERIG_OT_AddExtraJointOperator(bpy.types.Operator):
             {"INFO"},
             "Success Add Extra Joint between "
             + f"PHYS_{phys_bone1_name} and PHYS_{phys_bone2_name}",
+        )
+
+        return {"FINISHED"}
+
+
+class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
+
+    bl_idname = "orito_itsuki.yurerig_update_parameters"
+    bl_label = "Update Yure Rig Parameters"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object = context.active_object
+        is_pose: bool = obj and obj.type == "ARMATURE" and obj.mode == "POSE"
+        return is_pose
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        props = context.scene.yurerig
+        armature: bpy.types.Object = context.active_object
+        selected_bones = context.selected_pose_bones
+
+        is_ctrl_bone_pattern = re.compile(r"^CTRL_.+")
+        is_slider_bone_pattern = re.compile(r"^CTRL_physics_influence_slider_.+")
+        is_rigidbody_joint_pattern = re.compile(r"^RIGIDBODY_JOINT_")
+
+        updated_joints_num = 0
+        updated_rigidbody_num = 0
+
+        for b in selected_bones:
+            if is_ctrl_bone_pattern.match(b.name) and not is_slider_bone_pattern.match(
+                b.name
+            ):
+                head = b.bone.head
+                tail = b.bone.tail
+                x_size = bpy.context.scene.yurerig.rigidbody_size_x
+                z_size = bpy.context.scene.yurerig.rigidbody_size_z
+                size = bpy.context.scene.yurerig.rigidbody_root_size
+                gap = bpy.context.scene.yurerig.rigidbody_gap
+                length = (head - tail).length
+
+                name = b.name[5:]
+
+                ctrl_bone = armature.pose.bones.get(f"CTRL_{name}")
+                if ctrl_bone is not None:
+                    bpy.data.objects.remove(ctrl_bone.custom_shape)
+                    ctrl_bone.custom_shape = make_controller_object(
+                        f"CTRL_{name}_ControllerBoneShape",
+                        ctrl_bone.head,
+                        ctrl_bone.tail,
+                    )
+
+                rigidbody_obj = bpy.data.objects.get(f"RIGIDBODY_{name}")
+                if rigidbody_obj is not None:
+                    rigidbody_obj.rigid_body.mass = (
+                        bpy.context.scene.yurerig.rigidbody_mass
+                    )
+                    rigidbody_obj.data.vertices[0].co = Vector(
+                        (x_size / 2, -length / 2 + gap / 2, z_size / 2)
+                    )
+                    rigidbody_obj.data.vertices[1].co = Vector(
+                        (x_size / 2, -length / 2 + gap / 2, -z_size / 2)
+                    )
+                    rigidbody_obj.data.vertices[2].co = Vector(
+                        (-x_size / 2, -length / 2 + gap / 2, z_size / 2)
+                    )
+                    rigidbody_obj.data.vertices[3].co = Vector(
+                        (-x_size / 2, -length / 2 + gap / 2, -z_size / 2)
+                    )
+                    rigidbody_obj.data.vertices[4].co = Vector(
+                        (x_size / 2, length / 2 - gap / 2, z_size / 2)
+                    )
+                    rigidbody_obj.data.vertices[5].co = Vector(
+                        (x_size / 2, length / 2 - gap / 2, -z_size / 2)
+                    )
+                    rigidbody_obj.data.vertices[6].co = Vector(
+                        (-x_size / 2, length / 2 - gap / 2, z_size / 2)
+                    )
+                    rigidbody_obj.data.vertices[7].co = Vector(
+                        (-x_size / 2, length / 2 - gap / 2, -z_size / 2)
+                    )
+                    updated_rigidbody_num += 1
+
+                rigidbody_root_obj = bpy.data.objects.get(f"RIGIDBODY_ROOT_{name}")
+                if rigidbody_root_obj is not None:
+                    rigidbody_root_obj.data.vertices[0].co = Vector(
+                        (size / 2, -size / 2, size / 2)
+                    )
+                    rigidbody_root_obj.data.vertices[1].co = Vector(
+                        (size / 2, -size / 2, -size / 2)
+                    )
+                    rigidbody_root_obj.data.vertices[2].co = Vector(
+                        (-size / 2, -size / 2, size / 2)
+                    )
+                    rigidbody_root_obj.data.vertices[3].co = Vector(
+                        (-size / 2, -size / 2, -size / 2)
+                    )
+                    rigidbody_root_obj.data.vertices[4].co = Vector(
+                        (size / 2, size / 2, size / 2)
+                    )
+                    rigidbody_root_obj.data.vertices[5].co = Vector(
+                        (size / 2, size / 2, -size / 2)
+                    )
+                    rigidbody_root_obj.data.vertices[6].co = Vector(
+                        (-size / 2, size / 2, size / 2)
+                    )
+                    rigidbody_root_obj.data.vertices[7].co = Vector(
+                        (-size / 2, size / 2, -size / 2)
+                    )
+                    updated_rigidbody_num += 1
+
+                rigidbody_goal_obj = bpy.data.objects.get(f"RIGIDBODY_GOAL_{name}")
+                if rigidbody_goal_obj is not None:
+                    rigidbody_goal_obj.data.vertices[0].co = Vector(
+                        (x_size / 2, -length / 2 + gap / 2, z_size / 2)
+                    )
+                    rigidbody_goal_obj.data.vertices[1].co = Vector(
+                        (x_size / 2, -length / 2 + gap / 2, -z_size / 2)
+                    )
+                    rigidbody_goal_obj.data.vertices[2].co = Vector(
+                        (-x_size / 2, -length / 2 + gap / 2, z_size / 2)
+                    )
+                    rigidbody_goal_obj.data.vertices[3].co = Vector(
+                        (-x_size / 2, -length / 2 + gap / 2, -z_size / 2)
+                    )
+                    rigidbody_goal_obj.data.vertices[4].co = Vector(
+                        (x_size / 2, length / 2 - gap / 2, z_size / 2)
+                    )
+                    rigidbody_goal_obj.data.vertices[5].co = Vector(
+                        (x_size / 2, length / 2 - gap / 2, -z_size / 2)
+                    )
+                    rigidbody_goal_obj.data.vertices[6].co = Vector(
+                        (-x_size / 2, length / 2 - gap / 2, z_size / 2)
+                    )
+                    rigidbody_goal_obj.data.vertices[7].co = Vector(
+                        (-x_size / 2, length / 2 - gap / 2, -z_size / 2)
+                    )
+
+                rigidbody_bone_shape_obj = bpy.data.objects.get(
+                    f"RIGIDBODY_{name}_BoneShape"
+                )
+                if rigidbody_bone_shape_obj is not None:
+                    rigidbody_bone_shape_obj.data.vertices[0].co = Vector(
+                        (x_size / 2, gap / 2, z_size / 2)
+                    )
+                    rigidbody_bone_shape_obj.data.vertices[1].co = Vector(
+                        (x_size / 2, gap / 2, -z_size / 2)
+                    )
+                    rigidbody_bone_shape_obj.data.vertices[2].co = Vector(
+                        (-x_size / 2, gap / 2, z_size / 2)
+                    )
+                    rigidbody_bone_shape_obj.data.vertices[3].co = Vector(
+                        (-x_size / 2, gap / 2, -z_size / 2)
+                    )
+                    rigidbody_bone_shape_obj.data.vertices[4].co = Vector(
+                        (x_size / 2, length - gap / 2, z_size / 2)
+                    )
+                    rigidbody_bone_shape_obj.data.vertices[5].co = Vector(
+                        (x_size / 2, length - gap / 2, -z_size / 2)
+                    )
+                    rigidbody_bone_shape_obj.data.vertices[6].co = Vector(
+                        (-x_size / 2, length - gap / 2, z_size / 2)
+                    )
+                    rigidbody_bone_shape_obj.data.vertices[7].co = Vector(
+                        (-x_size / 2, length - gap / 2, -z_size / 2)
+                    )
+
+                for obj in props.joints_collection.objects:
+                    if is_rigidbody_joint_pattern.match(obj.name):
+                        if name in obj.name:
+                            set_joint_properties(obj.rigid_body_constraint)
+                            updated_joints_num += 1
+
+        slider_size = context.scene.yurerig.controller_slider_size
+
+        for b in selected_bones:
+            if is_slider_bone_pattern.match(b.name):
+
+                bpy.ops.object.mode_set(mode="OBJECT")
+
+                deco_phys_curve = bpy.data.curves.new(type="FONT", name="DECO_PHYS")
+                deco_phys_curve.align_x = "CENTER"
+                deco_phys_curve.align_y = "TOP"
+                deco_phys_curve.size = slider_size / 6
+                deco_phys = bpy.data.objects.new(
+                    "DECO_PHYS", object_data=deco_phys_curve
+                )
+                deco_phys.data.body = "PHYS"
+                deco_phys.location = Vector((0, 0, slider_size * 4 / 6))
+                deco_phys.rotation_euler = Vector((math.radians(90), 0, 0))
+                context.scene.collection.objects.link(deco_phys)
+                for o in context.view_layer.objects:
+                    o.select_set(o == deco_phys)
+                context.view_layer.objects.active = deco_phys
+                bpy.ops.object.convert(target="MESH")
+                context.scene.yurerig.controllers_collection.objects.link(deco_phys)
+
+                deco_fk_curve = bpy.data.curves.new(type="FONT", name="DECO_FK")
+                deco_fk_curve.align_x = "CENTER"
+                deco_fk_curve.align_y = "TOP"
+                deco_fk_curve.size = slider_size / 6
+                deco_fk = bpy.data.objects.new("DECO_FK", object_data=deco_fk_curve)
+                deco_fk.data.body = "FK"
+                deco_fk.location = Vector((0, 0, -slider_size / 6))
+                deco_fk.rotation_euler = Vector((math.radians(90), 0, 0))
+                context.scene.collection.objects.link(deco_fk)
+                for o in context.view_layer.objects:
+                    o.select_set(o == deco_fk)
+                context.view_layer.objects.active = deco_fk
+                bpy.ops.object.convert(target="MESH")
+                context.scene.yurerig.controllers_collection.objects.link(deco_fk)
+
+                context.view_layer.objects.active = armature
+
+                bpy.ops.object.mode_set(mode="EDIT")
+
+                slider_bone_pattern = re.compile(
+                    r"CTRL_physics_influence_slider_(\d+)_BoneShape"
+                )
+
+                physics_influence_slider_name = b.name
+                match = slider_bone_pattern.match(b.name)
+                if match is None:
+                    continue
+                i = match.groups()[0]
+                physics_influence_slider_root_name = (
+                    f"DECO_physics_influence_slider_root_{i}_BoneShape"
+                )
+
+                bpy.data.objects.remove(
+                    armature.pose.bones[physics_influence_slider_root_name].custom_shape
+                )
+                armature.pose.bones[
+                    physics_influence_slider_root_name
+                ].custom_shape = make_slider_root(
+                    physics_influence_slider_root_name, deco_fk, deco_phys
+                )
+                physics_influence_slider_pose_bone = armature.pose.bones[
+                    physics_influence_slider_name
+                ]
+                max_slider_value = slider_size * 2 / 6
+                physics_influence_slider_pose_bone[
+                    "Max Slider Value"
+                ] = max_slider_value
+                bpy.data.objects.remove(physics_influence_slider_pose_bone.custom_shape)
+                physics_influence_slider_pose_bone.custom_shape = make_slider_obj(
+                    physics_influence_slider_name
+                )
+                physics_influence_slider_pose_bone.constraints[
+                    0
+                ].max_z = max_slider_value
+
+        context.view_layer.objects.active = armature
+        bpy.ops.object.mode_set(mode="POSE")
+
+        self.report(
+            {"INFO"},
+            "Success Update Parameters: "
+            + f"update {updated_joints_num} joints "
+            + f"and {updated_rigidbody_num} rigidbodies",
         )
 
         return {"FINISHED"}

@@ -334,6 +334,9 @@ class YURERIG_PT_Setup_PanelUI(bpy.types.Panel):
         box.operator("orito_itsuki.yurerig_add_extra_joint")
 
         col.separator()
+        col.operator("orito_itsuki.yurerig_update_parameters")
+
+        col.separator()
         col.operator("orito_itsuki.yurerig_remove")
 
 
