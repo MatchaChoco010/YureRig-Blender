@@ -436,6 +436,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
 
         bpy.context.scene.rigidbody_world.collection.objects.link(obj)
         obj.rigid_body.type = "PASSIVE"
+        obj.rigid_body.kinematic = True
         obj.rigid_body.collision_collections = [layer == 19 for layer in range(20)]
 
         bpy.context.scene.rigidbody_world.constraints.objects.link(obj)
@@ -934,6 +935,13 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                         child_edit_bone.tail,
                         child_edit_bone.z_axis,
                     )
+                copy_location = obj.constraints.new("COPY_LOCATION")
+                copy_location.target = armature
+                copy_location.subtarget = f"CTRL_{child_bone.name[4:]}"
+                copy_location.head_tail = 0.5
+                copy_rotation = obj.constraints.new("COPY_ROTATION")
+                copy_rotation.target = armature
+                copy_rotation.subtarget = f"CTRL_{child_bone.name[4:]}"
 
         bpy.ops.object.mode_set(mode="POSE")
 
