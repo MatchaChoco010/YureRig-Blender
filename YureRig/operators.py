@@ -702,6 +702,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     if not is_def_bone_pattern.match(parent_name):
                         parent_name = f"DEF_{parent_name}"
                 def_bones.append(child_bone)
+                child_edit_bone = armature.data.edit_bones[child_bone.name]
 
                 # Create a `PHYS_` bone
                 phys_name = f"PHYS_{name[4:]}"
@@ -709,8 +710,8 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     phys_bone = armature.data.edit_bones[phys_name]
                 else:
                     phys_bone = armature.data.edit_bones.new(phys_name)
-                phys_bone.head = child_bone.head
-                phys_bone.tail = child_bone.tail
+                phys_bone.head = child_edit_bone.head
+                phys_bone.tail = child_edit_bone.tail
                 if parent_is_active_bone:
                     phys_bone.parent = armature.data.edit_bones[active_bone.name]
                 else:
@@ -738,8 +739,8 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     ctrl_bone = armature.data.edit_bones[ctrl_name]
                 else:
                     ctrl_bone = armature.data.edit_bones.new(ctrl_name)
-                ctrl_bone.head = child_bone.head
-                ctrl_bone.tail = child_bone.tail
+                ctrl_bone.head = child_edit_bone.head
+                ctrl_bone.tail = child_edit_bone.tail
                 if parent_is_active_bone:
                     ctrl_bone.parent = armature.data.edit_bones[active_bone.name]
                 else:
@@ -763,6 +764,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     self.update_controller_object_radius(
                         ctrl_pose_bone.custom_shape, ctrl_bone.head, ctrl_bone.tail
                     )
+                ctrl_pose_bone.rotation_quaternion = child_bone.rotation_quaternion
                 ctrl_bones.append(ctrl_pose_bone)
                 ctrl_bone.layers = [layer == 8 for layer in range(32)]
 
@@ -820,8 +822,8 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     if bpy.data.objects.get(root_name) is None:
                         root_obj = self.make_rigidbody_root_object(
                             root_name,
-                            child_bone.head,
-                            child_bone.tail,
+                            child_edit_bone.head,
+                            child_edit_bone.tail,
                             child_edit_bone.z_axis,
                         )
                         root_obj_constraint = root_obj.constraints.new("CHILD_OF")
@@ -830,8 +832,8 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     else:
                         self.update_rigidbody_rotation(
                             bpy.data.objects[root_name],
-                            child_bone.head,
-                            child_bone.tail,
+                            child_edit_bone.head,
+                            child_edit_bone.tail,
                             child_edit_bone.z_axis,
                         )
 
@@ -839,22 +841,22 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 if bpy.data.objects.get(name) is None:
                     obj = self.make_rigidbody_object(
                         name,
-                        child_bone.head,
-                        child_bone.tail,
+                        child_edit_bone.head,
+                        child_edit_bone.tail,
                         child_edit_bone.z_axis,
                     )
                 else:
                     obj = bpy.data.objects[name]
                     self.update_rigidbody_rotation(
                         obj,
-                        child_bone.head,
-                        child_bone.tail,
+                        child_edit_bone.head,
+                        child_edit_bone.tail,
                         child_edit_bone.z_axis,
                     )
 
                 if phys_pose_bone.custom_shape is None:
                     phys_pose_bone.custom_shape = self.make_phys_bone_object(
-                        f"{name}_BoneShape", child_bone.head, child_bone.tail
+                        f"{name}_BoneShape", child_edit_bone.head, child_edit_bone.tail
                     )
                     phys_pose_bone.use_custom_shape_bone_size = False
 
@@ -869,7 +871,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     name = f"RIGIDBODY_{child_bone.name[4:]}"
                     joint_name = f"RIGIDBODY_JOINT_{child_bone.name[4:]}"
                     joint_obj = bpy.data.objects.new(joint_name, None)
-                    joint_obj.location = child_bone.head
+                    joint_obj.location = child_edit_bone.head
                     bpy.context.scene.rigidbody_world.constraints.objects.link(
                         joint_obj
                     )
@@ -888,7 +890,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                         f"RIGIDBODY_JOINT_{rel.parent.name[4:]}_{child_bone.name[4:]}"
                     )
                     joint_obj = bpy.data.objects.new(joint_name, None)
-                    joint_obj.location = (rel.parent.tail + child_bone.head) / 2
+                    joint_obj.location = (rel.parent.tail + child_edit_bone.head) / 2
                     bpy.context.scene.rigidbody_world.constraints.objects.link(
                         joint_obj
                     )
@@ -917,8 +919,8 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 if bpy.data.objects.get(name) is None:
                     obj = self.make_rigidbody_reset_goal_object(
                         name,
-                        child_bone.head,
-                        child_bone.tail,
+                        child_edit_bone.head,
+                        child_edit_bone.tail,
                         child_edit_bone.z_axis,
                         physics_influence_slider_name,
                         armature,
@@ -928,8 +930,8 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     obj = bpy.data.objects[name]
                     self.update_rigidbody_rotation(
                         obj,
-                        child_bone.head,
-                        child_bone.tail,
+                        child_edit_bone.head,
+                        child_edit_bone.tail,
                         child_edit_bone.z_axis,
                     )
 
@@ -957,6 +959,8 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         for b in ctrl_bones:
             b.bone.select = True
         armature.data.bones.active = active_bone.bone
+
+        bpy.ops.orito_itsuki.yurerig_set_rigidbody_and_joint_start_position()
 
         return {"FINISHED"}
 
