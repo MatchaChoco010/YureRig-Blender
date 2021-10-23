@@ -1444,3 +1444,35 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
                 continue
 
         return {"FINISHED"}
+
+
+class YURERIG_OT_UpdateBoneColorOperator(bpy.types.Operator):
+
+    bl_idname = "orito_itsuki.yurerig_update_bone_color"
+    bl_label = "Update Yure Rig Bone Color"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object = context.active_object
+        is_pose: bool = obj and obj.type == "ARMATURE" and obj.mode == "POSE"
+        return is_pose
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        props = context.scene.yurerig
+        armature: bpy.types.Object = context.active_object
+
+        def_bone_group = armature.pose.bone_groups["DEFORM_BONES"]
+        def_bone_group.colors.normal = props.deform_bone_color
+        def_bone_group.colors.select = props.deform_bone_color
+        def_bone_group.colors.active = props.deform_bone_color
+        ctrl_bone_group = armature.pose.bone_groups["CONTROLLER_BONES"]
+        ctrl_bone_group.colors.normal = props.controller_bone_color
+        ctrl_bone_group.colors.select = props.controller_bone_color
+        ctrl_bone_group.colors.active = props.controller_bone_color
+        phys_bone_group = armature.pose.bone_groups["PHYSICS_BONES"]
+        phys_bone_group.colors.normal = props.physics_bone_color
+        phys_bone_group.colors.select = props.physics_bone_color
+        phys_bone_group.colors.active = props.physics_bone_color
+
+        return {"FINISHED"}

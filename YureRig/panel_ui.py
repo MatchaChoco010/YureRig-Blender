@@ -280,6 +280,7 @@ class YURERIG_PT_BoneColorSet_PanelUI(bpy.types.Panel):
         col.prop(props, "deform_bone_color")
         col.prop(props, "controller_bone_color")
         col.prop(props, "physics_bone_color")
+        col.operator("orito_itsuki.yurerig_update_bone_color")
 
 
 class YURERIG_PT_Setup_PanelUI(bpy.types.Panel):
