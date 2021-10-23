@@ -794,11 +794,12 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 ctrl_influence_driver.driver.expression = "1 - locZ / maxLocZ"
 
         # Setup rigid body world
-        if (
-            bpy.context.scene.rigidbody_world is None
-            or bpy.context.scene.rigidbody_world.collection is None
-        ):
+        if bpy.context.scene.rigidbody_world is None:
             bpy.ops.rigidbody.world_add()
+        if (
+            bpy.context.scene.rigidbody_world
+            and bpy.context.scene.rigidbody_world.collection is None
+        ):
             bpy.context.scene.rigidbody_world.enabled = True
             bpy.context.scene.rigidbody_world.collection = bpy.data.collections.new(
                 "RigidBody Collection"
