@@ -1,112 +1,9 @@
 import math
 import re
-from typing import List, Optional, Set
+from typing import List, Set
 
 import bpy
 from mathutils import Vector
-
-
-def update_panel(
-    self: Optional[bpy.props.StringProperty], context: bpy.types.Context
-) -> None:
-    """
-    Update Category of Panel by preferences 'Addon Tab' setting.
-    """
-
-    try:
-        if "bl_rna" in YURERIG_PT_PanelUI.__dict__:
-            bpy.utils.unregister_class(YURERIG_PT_PanelUI)
-        YURERIG_PT_PanelUI.bl_category = context.preferences.addons[
-            __package__
-        ].preferences.category
-        bpy.utils.register_class(YURERIG_PT_PanelUI)
-    except Exception:
-        pass
-
-
-def register_props() -> None:
-    """
-    Register addon-wide properties.
-    """
-
-    bpy.types.Scene.yurerig = bpy.props.PointerProperty(type=YURERIG_Props)
-
-
-def unregister_props() -> None:
-    """
-    Unregister addon-wide properties.
-    """
-
-    del bpy.types.Scene.yurerig
-
-
-class YURERIG_Preferences(bpy.types.AddonPreferences):
-    """
-    Addon preferences class.
-    """
-
-    bl_idname = __package__
-
-    category: bpy.props.StringProperty(  # type: ignore
-        default="YureRig", name="Addon Tab", update=update_panel
-    )
-
-    def draw(self, context: bpy.types.Context) -> None:
-        layout = self.layout
-        col = layout.column()
-        col.prop(self, "category")
-
-
-class YURERIG_Props(bpy.types.PropertyGroup):
-    """
-    Addon-wide properties class.
-    """
-
-    controller_bone_radius: bpy.props.FloatProperty(  # type: ignore
-        default=0.05, name="Controller Bone Radius"
-    )
-    controller_slider_size: bpy.props.FloatProperty(  # type: ignore
-        default=0.25, name="Controller Slider Size"
-    )
-    rigidbody_root_size: bpy.props.FloatProperty(  # type: ignore
-        default=0.01, name="RigidBody Root Size"
-    )
-    rigidbody_size_x: bpy.props.FloatProperty(  # type: ignore
-        default=0.05, name="RigidBody Size X"
-    )
-    rigidbody_size_z: bpy.props.FloatProperty(  # type: ignore
-        default=0.02, name="RigidBody Size Z"
-    )
-    rigidbody_gap: bpy.props.FloatProperty(  # type: ignore
-        default=0.04, name="RigidBody Gap"
-    )
-    rigidbody_mass: bpy.props.FloatProperty(  # type: ignore
-        default=1, name="RigidBody Mass"
-    )
-    root_collection: bpy.props.PointerProperty(  # type: ignore
-        type=bpy.types.Collection
-    )
-    joints_collection: bpy.props.PointerProperty(  # type: ignore
-        type=bpy.types.Collection
-    )
-    rigidbodies_collection: bpy.props.PointerProperty(  # type: ignore
-        type=bpy.types.Collection
-    )
-    rigidbodies_reset_goal_collection: bpy.props.PointerProperty(  # type: ignore
-        type=bpy.types.Collection
-    )
-    controllers_collection: bpy.props.PointerProperty(  # type: ignore
-        type=bpy.types.Collection
-    )
-    deform_bone_color: bpy.props.FloatVectorProperty(  # type: ignore
-        default=(0.5, 0.5, 0.5), name="Deform Bone Color", subtype="COLOR"
-    )
-    controller_bone_color: bpy.props.FloatVectorProperty(  # type: ignore
-        default=(0.5, 0.5, 1.0), name="Controller Bone Color", subtype="COLOR"
-    )
-    physics_bone_color: bpy.props.FloatVectorProperty(  # type: ignore
-        default=(1.0, 0.5, 0.5), name="Physics Bone Color", subtype="COLOR"
-    )
 
 
 class BoneRelation:
@@ -203,8 +100,6 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     name="YureRig Joints"
                 )
                 props.root_collection.children.link(props.joints_collection)
-            props.joints_collection.hide_viewport = True
-            props.joints_collection.hide_render = True
 
         if props.rigidbodies_collection is None:
             if "YureRig RigidBodies" in bpy.data.collections:
@@ -373,7 +268,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
         return obj
 
-    def make_rigidbody_object(
+    def make_phys_bone_object(
         self, name: str, head: Vector, tail: Vector
     ) -> bpy.types.Object:
         x_size = bpy.context.scene.yurerig.rigidbody_size_x
@@ -405,11 +300,47 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
 
         obj = bpy.data.objects.new(name, object_data=mesh)
         obj.display_type = "WIRE"
+
+        bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
+        return obj
+
+    def make_rigidbody_object(
+        self, name: str, head: Vector, tail: Vector
+    ) -> bpy.types.Object:
+        x_size = bpy.context.scene.yurerig.rigidbody_size_x
+        z_size = bpy.context.scene.yurerig.rigidbody_size_z
+        gap = bpy.context.scene.yurerig.rigidbody_gap
+        length = (head - tail).length
+
+        verts: List[Vector] = []
+        verts.append(Vector((x_size / 2, -length / 2 + gap / 2, z_size / 2)))
+        verts.append(Vector((x_size / 2, -length / 2 + gap / 2, -z_size / 2)))
+        verts.append(Vector((-x_size / 2, -length / 2 + gap / 2, z_size / 2)))
+        verts.append(Vector((-x_size / 2, -length / 2 + gap / 2, -z_size / 2)))
+        verts.append(Vector((x_size / 2, length / 2 - gap / 2, z_size / 2)))
+        verts.append(Vector((x_size / 2, length / 2 - gap / 2, -z_size / 2)))
+        verts.append(Vector((-x_size / 2, length / 2 - gap / 2, z_size / 2)))
+        verts.append(Vector((-x_size / 2, length / 2 - gap / 2, -z_size / 2)))
+
+        faces = [
+            [0, 1, 3, 2],
+            [4, 5, 7, 6],
+            [0, 1, 5, 4],
+            [1, 2, 6, 5],
+            [2, 3, 7, 6],
+            [3, 0, 4, 7],
+        ]
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(verts, [], faces)
+        mesh.update(calc_edges=True)
+
+        obj = bpy.data.objects.new(name, object_data=mesh)
+        obj.display_type = "WIRE"
         bpy.context.scene.rigidbody_world.collection.objects.link(obj)
         obj.rigid_body.type = "ACTIVE"
         obj.rigid_body.mass = bpy.context.scene.yurerig.rigidbody_mass
 
-        obj.location = head
+        obj.location = (tail + head) / 2
         obj.rotation_mode = "QUATERNION"
         obj.rotation_quaternion = (tail - head).to_track_quat("Y", "Z")
 
@@ -461,6 +392,48 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
     ) -> None:
         obj.rotation_mode = "QUATERNION"
         obj.rotation_quaternion = (tail - head).to_track_quat("Y", "Z")
+
+    def set_joint_properties(self, joint: bpy.types.RigidBodyConstraint) -> None:
+        props = bpy.context.scene.yurerig
+        joint.use_limit_ang_x = props.rigidbody_joint_use_angular_limit_x
+        joint.limit_ang_x_lower = props.rigidbody_joint_angular_limit_lower_x
+        joint.limit_ang_x_upper = props.rigidbody_joint_angular_limit_upper_x
+        joint.use_limit_ang_y = props.rigidbody_joint_use_angular_limit_y
+        joint.limit_ang_y_lower = props.rigidbody_joint_angular_limit_lower_y
+        joint.limit_ang_y_upper = props.rigidbody_joint_angular_limit_upper_y
+        joint.use_limit_ang_z = props.rigidbody_joint_use_angular_limit_z
+        joint.limit_ang_z_lower = props.rigidbody_joint_angular_limit_lower_z
+        joint.limit_ang_z_upper = props.rigidbody_joint_angular_limit_upper_z
+
+        joint.use_limit_lin_x = props.rigidbody_joint_use_linear_limit_x
+        joint.limit_lin_x_lower = props.rigidbody_joint_linear_limit_lower_x
+        joint.limit_lin_x_upper = props.rigidbody_joint_linear_limit_upper_x
+        joint.use_limit_lin_y = props.rigidbody_joint_use_linear_limit_y
+        joint.limit_lin_y_lower = props.rigidbody_joint_linear_limit_lower_y
+        joint.limit_lin_y_upper = props.rigidbody_joint_linear_limit_upper_y
+        joint.use_limit_lin_z = props.rigidbody_joint_use_linear_limit_z
+        joint.limit_lin_z_lower = props.rigidbody_joint_linear_limit_lower_z
+        joint.limit_lin_z_upper = props.rigidbody_joint_linear_limit_upper_z
+
+        joint.use_spring_ang_x = props.rigidbody_joint_use_angular_spring_x
+        joint.spring_stiffness_ang_x = props.rigidbody_joint_angular_spring_stiffness_x
+        joint.spring_damping_ang_x = props.rigidbody_joint_angular_spring_damping_x
+        joint.use_spring_ang_y = props.rigidbody_joint_use_angular_spring_y
+        joint.spring_stiffness_ang_y = props.rigidbody_joint_angular_spring_stiffness_y
+        joint.spring_damping_ang_y = props.rigidbody_joint_angular_spring_damping_y
+        joint.use_spring_ang_z = props.rigidbody_joint_use_angular_spring_z
+        joint.spring_stiffness_ang_z = props.rigidbody_joint_angular_spring_stiffness_z
+        joint.spring_damping_ang_z = props.rigidbody_joint_angular_spring_damping_z
+
+        joint.use_spring_x = props.rigidbody_joint_use_linear_spring_x
+        joint.spring_stiffness_x = props.rigidbody_joint_linear_spring_stiffness_x
+        joint.spring_damping_x = props.rigidbody_joint_linear_spring_damping_x
+        joint.use_spring_y = props.rigidbody_joint_use_linear_spring_y
+        joint.spring_stiffness_y = props.rigidbody_joint_linear_spring_stiffness_y
+        joint.spring_damping_y = props.rigidbody_joint_linear_spring_damping_y
+        joint.use_spring_z = props.rigidbody_joint_use_linear_spring_z
+        joint.spring_stiffness_z = props.rigidbody_joint_linear_spring_stiffness_z
+        joint.spring_damping_z = props.rigidbody_joint_linear_spring_damping_z
 
     def execute(self, context: bpy.types.Object) -> Set[str]:
         self.init_collection()
@@ -535,14 +508,18 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
 
         bpy.ops.object.mode_set(mode="EDIT")
         i = 0
-        physics_influence_slider_root_name = f"DECO_physics_influence_slider_root_{i}"
-        physics_influence_slider_name = f"CTRL_physics_influence_slider_{i}"
+        physics_influence_slider_root_name = (
+            f"DECO_physics_influence_slider_root_{i}_BoneShape"
+        )
+        physics_influence_slider_name = f"CTRL_physics_influence_slider_{i}_BoneShape"
         while physics_influence_slider_root_name in armature.data.bones:
             i += 1
             physics_influence_slider_root_name = (
-                f"DECO_physics_influence_slider_root_{i}"
+                f"DECO_physics_influence_slider_root_{i}_BoneShape"
             )
-            physics_influence_slider_name = f"CTRL_physics_influence_slider_{i}"
+            physics_influence_slider_name = (
+                f"CTRL_physics_influence_slider_{i}_BoneShape"
+            )
         physics_influence_slider_root_bone = armature.data.edit_bones.new(
             physics_influence_slider_root_name
         )
@@ -684,7 +661,9 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 ctrl_pose_bone.bone_group = ctrl_bone_group
                 if ctrl_pose_bone.custom_shape is None:
                     ctrl_obj = self.make_controller_object(
-                        f"{ctrl_name}_Controller", ctrl_bone.head, ctrl_bone.tail
+                        f"{ctrl_name}_ControllerBoneShape",
+                        ctrl_bone.head,
+                        ctrl_bone.tail,
                     )
                     ctrl_pose_bone.custom_shape = ctrl_obj
                     ctrl_pose_bone.use_custom_shape_bone_size = False
@@ -714,24 +693,41 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     f"1 - locZ / {max_slider_value}"
                 )
 
-        bpy.ops.rigidbody.world_add()
-        bpy.context.scene.rigidbody_world.enabled = True
-        bpy.context.scene.rigidbody_world.collection = bpy.data.collections.new(
-            "RigidBody Collection"
-        )
+        # Setup rigid body world
+        if (
+            bpy.context.scene.rigidbody_world is None
+            or bpy.context.scene.rigidbody_world.collection is None
+        ):
+            bpy.ops.rigidbody.world_add()
+            bpy.context.scene.rigidbody_world.enabled = True
+            bpy.context.scene.rigidbody_world.collection = bpy.data.collections.new(
+                "RigidBody Collection"
+            )
+            bpy.context.scene.rigidbody_world.constraints = bpy.data.collections.new(
+                "RigidBody Constraint Collection"
+            )
+
         bpy.ops.object.mode_set(mode="POSE")
+
+        # Create Rigid Body Objects
         for rel in bone_tree:
             for child_bone in rel.children:
                 if is_ctrl_bone_pattern.match(child_bone.name):
                     # Already setup
                     continue
 
+                phys_name = f"PHYS_{child_bone.name[4:]}"
+                phys_pose_bone = armature.pose.bones[phys_name]
+
                 if rel.parent == active_bone:
                     root_name = f"RIGIDBODY_{child_bone.name[4:]}_Root"
                     if bpy.data.objects.get(root_name) is None:
-                        self.make_rigidbody_root_object(
+                        root_obj = self.make_rigidbody_root_object(
                             root_name, child_bone.head, child_bone.tail
                         )
+                        root_obj_constraint = root_obj.constraints.new("CHILD_OF")
+                        root_obj_constraint.target = armature
+                        root_obj_constraint.subtarget = active_bone.name
                     else:
                         self.update_rigidbody_rotation(
                             bpy.data.objects[root_name],
@@ -752,14 +748,57 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                         child_bone.tail,
                     )
 
-                phys_name = f"PHYS_{child_bone.name[4:]}"
-                phys_pose_bone = armature.pose.bones[phys_name]
                 if phys_pose_bone.custom_shape is None:
-                    phys_pose_bone.custom_shape = obj
+                    phys_pose_bone.custom_shape = self.make_phys_bone_object(
+                        f"{name}_BoneShape", child_bone.head, child_bone.tail
+                    )
                     phys_pose_bone.use_custom_shape_bone_size = False
-                    phys_pose_bone.bone_group
-                phys_constraint = phys_pose_bone.constraints.new("COPY_TRANSFORMS")
+
+                phys_constraint = phys_pose_bone.constraints.new("COPY_ROTATION")
                 phys_constraint.target = obj
+
+        # Create Rigid Body Joints
+        for rel in bone_tree:
+            if rel.parent == active_bone:
+                for child_bone in rel.children:
+                    root_obj_name = f"RIGIDBODY_{child_bone.name[4:]}_Root"
+                    name = f"RIGIDBODY_{child_bone.name[4:]}"
+                    joint_name = f"RIGIDBODY_JOINT_{child_bone.name[4:]}"
+                    joint_obj = bpy.data.objects.new(joint_name, None)
+                    joint_obj.location = child_bone.head
+                    bpy.context.scene.rigidbody_world.constraints.objects.link(
+                        joint_obj
+                    )
+                    joint_obj.rigid_body_constraint.type = "GENERIC_SPRING"
+                    joint_obj.rigid_body_constraint.object1 = bpy.data.objects[
+                        root_obj_name
+                    ]
+                    joint_obj.rigid_body_constraint.object2 = bpy.data.objects[name]
+                    self.set_joint_properties(joint_obj.rigid_body_constraint)
+                    bpy.context.scene.yurerig.joints_collection.objects.link(joint_obj)
+            else:
+                for child_bone in rel.children:
+                    parent_obj_name = f"RIGIDBODY_{rel.parent.name[4:]}"
+                    child_obj_name = f"RIGIDBODY_{child_bone.name[4:]}"
+                    joint_name = (
+                        f"RIGIDBODY_JOINT_{rel.parent.name[4:]}_{child_bone.name[4:]}"
+                    )
+                    joint_obj = bpy.data.objects.new(joint_name, None)
+                    joint_obj.location = (rel.parent.tail + child_bone.head) / 2
+                    bpy.context.scene.rigidbody_world.constraints.objects.link(
+                        joint_obj
+                    )
+                    joint_obj.rigid_body_constraint.type = "GENERIC_SPRING"
+                    joint_obj.rigid_body_constraint.object1 = bpy.data.objects[
+                        parent_obj_name
+                    ]
+                    joint_obj.rigid_body_constraint.object2 = bpy.data.objects[
+                        child_obj_name
+                    ]
+                    self.set_joint_properties(joint_obj.rigid_body_constraint)
+                    bpy.context.scene.yurerig.joints_collection.objects.link(joint_obj)
+
+        bpy
 
         # SET DECO_, CTRL_ and PHYS_ bone not use deform
         for b in deco_bones:
@@ -785,44 +824,3 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         armature.data.bones.active = active_bone.bone
 
         return {"FINISHED"}
-
-
-class YURERIG_PT_PanelUI(bpy.types.Panel):
-    """
-    UserInterface class for YureRig addon.
-    """
-
-    bl_label = "Yure Rig"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "YureRig"
-
-    @classmethod
-    def search_collections(cls) -> List[str]:
-        collection_names = [c.name for c in bpy.data.collections]
-        return collection_names
-
-    def draw(self, context):
-        props = context.scene.yurerig
-
-        col = self.layout.column()
-        col.label(text="Controller Parameter")
-        col.prop(props, "controller_bone_radius")
-        col.prop(props, "controller_slider_size")
-
-        col.label(text="RigidBodies Parameter")
-        col.prop(props, "rigidbody_root_size")
-        col.prop(props, "rigidbody_size_x")
-        col.prop(props, "rigidbody_size_z")
-        col.prop(props, "rigidbody_gap")
-        col.prop(props, "rigidbody_mass")
-
-        col.label(text="RigidBody Joints Parameter")
-
-        col.label(text="Bone Color Set")
-        col.prop(props, "deform_bone_color")
-        col.prop(props, "controller_bone_color")
-        col.prop(props, "physics_bone_color")
-
-        col.separator()
-        col.operator("orito_itsuki.yurerig_setup")

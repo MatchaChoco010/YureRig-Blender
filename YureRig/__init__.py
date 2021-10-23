@@ -1,6 +1,7 @@
 import bpy
 
-from . import auto_load, yurerig
+__all__ = ["auto_load", "panel_ui", "preferences", "property_group", "yurerig"]
+from . import auto_load, panel_ui, preferences, property_group, yurerig
 
 bl_info = {
     "name": "YureRig",
@@ -19,10 +20,10 @@ auto_load.init()
 
 def register():
     auto_load.register()
-    yurerig.register_props()
-    yurerig.update_panel(None, bpy.context)
+    property_group.register_props()
+    panel_ui.update_panel(None, bpy.context)
 
 
 def unregister():
     auto_load.unregister()
-    yurerig.unregister_props()
+    property_group.unregister_props()
