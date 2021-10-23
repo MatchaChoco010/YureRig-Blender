@@ -347,6 +347,72 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         bpy.context.scene.yurerig.rigidbodies_collection.objects.link(obj)
         return obj
 
+    def make_rigidbody_reset_goal_object(
+        self,
+        name: str,
+        head: Vector,
+        tail: Vector,
+        physics_influence_slider_name: str,
+        armature: bpy.types.Object,
+        rigidbody_obj: bpy.types.Object,
+    ) -> bpy.types.Object:
+        x_size = bpy.context.scene.yurerig.rigidbody_size_x
+        z_size = bpy.context.scene.yurerig.rigidbody_size_z
+        gap = bpy.context.scene.yurerig.rigidbody_gap
+        length = (head - tail).length
+
+        verts: List[Vector] = []
+        verts.append(Vector((x_size / 2, -length / 2 + gap / 2, z_size / 2)))
+        verts.append(Vector((x_size / 2, -length / 2 + gap / 2, -z_size / 2)))
+        verts.append(Vector((-x_size / 2, -length / 2 + gap / 2, z_size / 2)))
+        verts.append(Vector((-x_size / 2, -length / 2 + gap / 2, -z_size / 2)))
+        verts.append(Vector((x_size / 2, length / 2 - gap / 2, z_size / 2)))
+        verts.append(Vector((x_size / 2, length / 2 - gap / 2, -z_size / 2)))
+        verts.append(Vector((-x_size / 2, length / 2 - gap / 2, z_size / 2)))
+        verts.append(Vector((-x_size / 2, length / 2 - gap / 2, -z_size / 2)))
+
+        faces = [
+            [0, 1, 3, 2],
+            [4, 5, 7, 6],
+            [0, 1, 5, 4],
+            [1, 2, 6, 5],
+            [2, 3, 7, 6],
+            [3, 0, 4, 7],
+        ]
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(verts, [], faces)
+        mesh.update(calc_edges=True)
+
+        obj = bpy.data.objects.new(name, object_data=mesh)
+        obj.display_type = "WIRE"
+
+        bpy.context.scene.rigidbody_world.collection.objects.link(obj)
+        obj.rigid_body.type = "PASSIVE"
+        obj.rigid_body.collision_collections = [layer == 19 for layer in range(20)]
+
+        bpy.context.scene.rigidbody_world.constraints.objects.link(obj)
+        obj.rigid_body_constraint.type = "FIXED"
+        obj.rigid_body_constraint.object1 = obj
+        obj.rigid_body_constraint.object2 = rigidbody_obj
+        obj.rigid_body_constraint.enabled
+        constraint_enabled_driver = obj.rigid_body_constraint.driver_add("enabled")
+        constraint_enabled_driver.driver.type = "SCRIPTED"
+        var = constraint_enabled_driver.driver.variables.new()
+        var.name = "locZ"
+        var.type = "TRANSFORMS"
+        var.targets[0].id = armature
+        var.targets[0].bone_target = physics_influence_slider_name
+        var.targets[0].transform_space = "LOCAL_SPACE"
+        var.targets[0].transform_type = "LOC_Z"
+        constraint_enabled_driver.driver.expression = "locZ == 0"
+
+        obj.location = (tail + head) / 2
+        obj.rotation_mode = "QUATERNION"
+        obj.rotation_quaternion = (tail - head).to_track_quat("Y", "Z")
+
+        bpy.context.scene.yurerig.rigidbodies_reset_goal_collection.objects.link(obj)
+        return obj
+
     def make_rigidbody_root_object(
         self, name: str, head: Vector, tail: Vector
     ) -> bpy.types.Object:
@@ -682,13 +748,12 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 ctrl_influence_driver.driver.type = "SCRIPTED"
                 var = ctrl_influence_driver.driver.variables.new()
                 var.name = "locZ"
-                var.type = "SINGLE_PROP"
+                var.type = "TRANSFORMS"
                 var.targets[0].id = armature
-                var.targets[
-                    0
-                ].data_path = (
-                    f'pose.bones.["{physics_influence_slider_name}"].location[2]'
-                )
+                var.targets[0].bone_target = physics_influence_slider_name
+                var.targets[0].transform_space = "LOCAL_SPACE"
+                var.targets[0].transform_type = "LOC_Z"
+                ctrl_influence_driver.driver.expression = "locZ == 0"
                 ctrl_influence_driver.driver.expression = (
                     f"1 - locZ / {max_slider_value}"
                 )
@@ -797,8 +862,33 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     ]
                     self.set_joint_properties(joint_obj.rigid_body_constraint)
                     bpy.context.scene.yurerig.joints_collection.objects.link(joint_obj)
+        # Create Rigid Body Reset Goal Objects
+        for rel in bone_tree:
+            for child_bone in rel.children:
+                if is_ctrl_bone_pattern.match(child_bone.name):
+                    # Already setup
+                    continue
 
-        bpy
+                phys_name = f"PHYS_{child_bone.name[4:]}"
+                phys_pose_bone = armature.pose.bones[phys_name]
+
+                name = f"RIGIDBODY_GOAL_{child_bone.name[4:]}"
+                if bpy.data.objects.get(name) is None:
+                    obj = self.make_rigidbody_reset_goal_object(
+                        name,
+                        child_bone.head,
+                        child_bone.tail,
+                        physics_influence_slider_name,
+                        armature,
+                        bpy.data.objects[f"RIGIDBODY_{child_bone.name[4:]}"],
+                    )
+                else:
+                    obj = bpy.data.objects[name]
+                    self.update_rigidbody_rotation(
+                        obj,
+                        child_bone.head,
+                        child_bone.tail,
+                    )
 
         # SET DECO_, CTRL_ and PHYS_ bone not use deform
         for b in deco_bones:
