@@ -796,17 +796,14 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         # Setup rigid body world
         if bpy.context.scene.rigidbody_world is None:
             bpy.ops.rigidbody.world_add()
-        if (
-            bpy.context.scene.rigidbody_world
-            and bpy.context.scene.rigidbody_world.collection is None
-        ):
-            bpy.context.scene.rigidbody_world.enabled = True
-            bpy.context.scene.rigidbody_world.collection = bpy.data.collections.new(
-                "RigidBody Collection"
-            )
-            bpy.context.scene.rigidbody_world.constraints = bpy.data.collections.new(
-                "RigidBody Constraint Collection"
-            )
+            if bpy.context.scene.rigidbody_world is not None:
+                bpy.context.scene.rigidbody_world.enabled = True
+                bpy.context.scene.rigidbody_world.collection = bpy.data.collections.new(
+                    "RigidBody Collection"
+                )
+                bpy.context.scene.rigidbody_world.constraints = (
+                    bpy.data.collections.new("RigidBody Constraint Collection")
+                )
 
         # Create Rigid Body Objects
         for rel in bone_tree:
@@ -874,9 +871,10 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     joint_name = f"RIGIDBODY_JOINT_{child_bone.name[4:]}"
                     joint_obj = bpy.data.objects.new(joint_name, None)
                     joint_obj.location = child_edit_bone.head
-                    bpy.context.scene.rigidbody_world.constraints.objects.link(
-                        joint_obj
-                    )
+                    if bpy.context.scene.rigidbody_world is not None:
+                        bpy.context.scene.rigidbody_world.constraints.objects.link(
+                            joint_obj
+                        )
                     joint_obj.rigid_body_constraint.type = "GENERIC_SPRING"
                     joint_obj.rigid_body_constraint.object1 = bpy.data.objects[
                         root_obj_name
@@ -893,9 +891,10 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     )
                     joint_obj = bpy.data.objects.new(joint_name, None)
                     joint_obj.location = (rel.parent.tail + child_edit_bone.head) / 2
-                    bpy.context.scene.rigidbody_world.constraints.objects.link(
-                        joint_obj
-                    )
+                    if bpy.context.scene.rigidbody_world is not None:
+                        bpy.context.scene.rigidbody_world.constraints.objects.link(
+                            joint_obj
+                        )
                     joint_obj.rigid_body_constraint.type = "GENERIC_SPRING"
                     joint_obj.rigid_body_constraint.object1 = bpy.data.objects[
                         parent_obj_name
