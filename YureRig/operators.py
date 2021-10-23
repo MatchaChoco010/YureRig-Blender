@@ -798,12 +798,14 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
             bpy.ops.rigidbody.world_add()
             if bpy.context.scene.rigidbody_world is not None:
                 bpy.context.scene.rigidbody_world.enabled = True
-                bpy.context.scene.rigidbody_world.collection = bpy.data.collections.new(
-                    "RigidBody Collection"
-                )
-                bpy.context.scene.rigidbody_world.constraints = (
-                    bpy.data.collections.new("RigidBody Constraint Collection")
-                )
+                if bpy.context.scene.rigidbody_world.collection is None:
+                    bpy.context.scene.rigidbody_world.collection = (
+                        bpy.data.collections.new("RigidBody Collection")
+                    )
+                if bpy.context.scene.rigidbody_world.constraints is None:
+                    bpy.context.scene.rigidbody_world.constraints = (
+                        bpy.data.collections.new("RigidBody Constraint Collection")
+                    )
 
         # Create Rigid Body Objects
         for rel in bone_tree:
