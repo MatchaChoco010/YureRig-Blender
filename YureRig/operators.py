@@ -1420,6 +1420,20 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
                 rigidbody_obj.matrix_world = mat
                 rigidbody_obj.location = (ctrl_pose_bone.tail + ctrl_pose_bone.head) / 2
 
+                rigidbody_goal_obj_name = f"RIGIDBODY_GOAL_{match.groups()[0]}"
+                rigidbody_goal_obj = bpy.data.objects[rigidbody_goal_obj_name]
+                dir_x = ctrl_pose_bone.x_axis
+                dir_y = ctrl_pose_bone.y_axis
+                dir_z = ctrl_pose_bone.z_axis
+                mat = Matrix.Identity(4)
+                mat.col[0] = dir_x.to_4d()
+                mat.col[1] = dir_y.to_4d()
+                mat.col[2] = dir_z.to_4d()
+                rigidbody_goal_obj.matrix_world = mat
+                rigidbody_goal_obj.location = (
+                    ctrl_pose_bone.tail + ctrl_pose_bone.head
+                ) / 2
+
         armature.update_from_editmode()
 
         bpy.ops.object.mode_set(mode="POSE")
