@@ -62,12 +62,26 @@ class YURERIG_Props(bpy.types.PropertyGroup):
     Addon-wide properties class.
     """
 
-    param: bpy.props.BoolProperty(default=False, name="Check Box")  # type: ignore
     controller_bone_radius: bpy.props.FloatProperty(  # type: ignore
         default=0.05, name="Controller Bone Radius"
     )
     controller_slider_size: bpy.props.FloatProperty(  # type: ignore
         default=0.25, name="Controller Slider Size"
+    )
+    rigidbody_root_size: bpy.props.FloatProperty(  # type: ignore
+        default=0.01, name="RigidBody Root Size"
+    )
+    rigidbody_size_x: bpy.props.FloatProperty(  # type: ignore
+        default=0.05, name="RigidBody Size X"
+    )
+    rigidbody_size_z: bpy.props.FloatProperty(  # type: ignore
+        default=0.02, name="RigidBody Size Z"
+    )
+    rigidbody_gap: bpy.props.FloatProperty(  # type: ignore
+        default=0.04, name="RigidBody Gap"
+    )
+    rigidbody_mass: bpy.props.FloatProperty(  # type: ignore
+        default=1, name="RigidBody Mass"
     )
     root_collection: bpy.props.PointerProperty(  # type: ignore
         type=bpy.types.Collection
@@ -83,6 +97,15 @@ class YURERIG_Props(bpy.types.PropertyGroup):
     )
     controllers_collection: bpy.props.PointerProperty(  # type: ignore
         type=bpy.types.Collection
+    )
+    deform_bone_color: bpy.props.FloatVectorProperty(  # type: ignore
+        default=(0.5, 0.5, 0.5), name="Deform Bone Color", subtype="COLOR"
+    )
+    controller_bone_color: bpy.props.FloatVectorProperty(  # type: ignore
+        default=(0.5, 0.5, 1.0), name="Controller Bone Color", subtype="COLOR"
+    )
+    physics_bone_color: bpy.props.FloatVectorProperty(  # type: ignore
+        default=(1.0, 0.5, 0.5), name="Physics Bone Color", subtype="COLOR"
     )
 
 
@@ -193,6 +216,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     name="YureRig RigidBodies"
                 )
                 props.root_collection.children.link(props.rigidbodies_collection)
+            props.rigidbodies_collection.lineart_usage = "EXCLUDE"
             props.rigidbodies_collection.hide_viewport = True
             props.rigidbodies_collection.hide_render = True
 
@@ -208,6 +232,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 props.root_collection.children.link(
                     props.rigidbodies_reset_goal_collection
                 )
+            props.rigidbodies_reset_goal_collection.lineart_usage = "EXCLUDE"
             props.rigidbodies_reset_goal_collection.hide_viewport = True
             props.rigidbodies_reset_goal_collection.hide_render = True
 
@@ -348,6 +373,95 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         bpy.context.scene.yurerig.controllers_collection.objects.link(obj)
         return obj
 
+    def make_rigidbody_object(
+        self, name: str, head: Vector, tail: Vector
+    ) -> bpy.types.Object:
+        x_size = bpy.context.scene.yurerig.rigidbody_size_x
+        z_size = bpy.context.scene.yurerig.rigidbody_size_z
+        gap = bpy.context.scene.yurerig.rigidbody_gap
+        length = (head - tail).length
+
+        verts: List[Vector] = []
+        verts.append(Vector((x_size / 2, gap / 2, z_size / 2)))
+        verts.append(Vector((x_size / 2, gap / 2, -z_size / 2)))
+        verts.append(Vector((-x_size / 2, gap / 2, z_size / 2)))
+        verts.append(Vector((-x_size / 2, gap / 2, -z_size / 2)))
+        verts.append(Vector((x_size / 2, length - gap / 2, z_size / 2)))
+        verts.append(Vector((x_size / 2, length - gap / 2, -z_size / 2)))
+        verts.append(Vector((-x_size / 2, length - gap / 2, z_size / 2)))
+        verts.append(Vector((-x_size / 2, length - gap / 2, -z_size / 2)))
+
+        faces = [
+            [0, 1, 3, 2],
+            [4, 5, 7, 6],
+            [0, 1, 5, 4],
+            [1, 2, 6, 5],
+            [2, 3, 7, 6],
+            [3, 0, 4, 7],
+        ]
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(verts, [], faces)
+        mesh.update(calc_edges=True)
+
+        obj = bpy.data.objects.new(name, object_data=mesh)
+        obj.display_type = "WIRE"
+        bpy.context.scene.rigidbody_world.collection.objects.link(obj)
+        obj.rigid_body.type = "ACTIVE"
+        obj.rigid_body.mass = bpy.context.scene.yurerig.rigidbody_mass
+
+        obj.location = head
+        obj.rotation_mode = "QUATERNION"
+        obj.rotation_quaternion = (tail - head).to_track_quat("Y", "Z")
+
+        bpy.context.scene.yurerig.rigidbodies_collection.objects.link(obj)
+        return obj
+
+    def make_rigidbody_root_object(
+        self, name: str, head: Vector, tail: Vector
+    ) -> bpy.types.Object:
+        size = bpy.context.scene.yurerig.rigidbody_root_size
+
+        verts: List[Vector] = []
+        verts.append(Vector((size / 2, -size / 2, size / 2)))
+        verts.append(Vector((size / 2, -size / 2, -size / 2)))
+        verts.append(Vector((-size / 2, -size / 2, size / 2)))
+        verts.append(Vector((-size / 2, -size / 2, -size / 2)))
+        verts.append(Vector((size / 2, size / 2, size / 2)))
+        verts.append(Vector((size / 2, size / 2, -size / 2)))
+        verts.append(Vector((-size / 2, size / 2, size / 2)))
+        verts.append(Vector((-size / 2, size / 2, -size / 2)))
+
+        faces = [
+            [0, 1, 3, 2],
+            [4, 5, 7, 6],
+            [0, 1, 5, 4],
+            [1, 2, 6, 5],
+            [2, 3, 7, 6],
+            [3, 0, 4, 7],
+        ]
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(verts, [], faces)
+        mesh.update(calc_edges=True)
+
+        obj = bpy.data.objects.new(name, object_data=mesh)
+        obj.display_type = "WIRE"
+        bpy.context.scene.rigidbody_world.collection.objects.link(obj)
+        obj.rigid_body.type = "PASSIVE"
+        obj.rigid_body.kinematic = True
+
+        obj.location = head
+        obj.rotation_mode = "QUATERNION"
+        obj.rotation_quaternion = (tail - head).to_track_quat("Y", "Z")
+
+        bpy.context.scene.yurerig.rigidbodies_collection.objects.link(obj)
+        return obj
+
+    def update_rigidbody_rotation(
+        self, obj: bpy.types.Object, head: Vector, tail: Vector
+    ) -> None:
+        obj.rotation_mode = "QUATERNION"
+        obj.rotation_quaternion = (tail - head).to_track_quat("Y", "Z")
+
     def execute(self, context: bpy.types.Object) -> Set[str]:
         self.init_collection()
 
@@ -362,7 +476,24 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         phys_bones: List[bpy.types.PoseBone] = []
         ctrl_bones: List[bpy.types.PoseBone] = []
 
-        armature.data.layers = [layer == 0 or layer == 8 for layer in range(32)]
+        armature.data.layers = [
+            layer == 0 or layer == 8 or layer == 16 for layer in range(32)
+        ]
+        def_bone_group = armature.pose.bone_groups.new(name="DEFORM_BONES")
+        def_bone_group.color_set = "CUSTOM"
+        def_bone_group.colors.normal = bpy.context.scene.yurerig.deform_bone_color
+        def_bone_group.colors.select = bpy.context.scene.yurerig.deform_bone_color
+        def_bone_group.colors.active = bpy.context.scene.yurerig.deform_bone_color
+        ctrl_bone_group = armature.pose.bone_groups.new(name="CONTROLLER_BONES")
+        ctrl_bone_group.color_set = "CUSTOM"
+        ctrl_bone_group.colors.normal = bpy.context.scene.yurerig.controller_bone_color
+        ctrl_bone_group.colors.select = bpy.context.scene.yurerig.controller_bone_color
+        ctrl_bone_group.colors.active = bpy.context.scene.yurerig.controller_bone_color
+        phys_bone_group = armature.pose.bone_groups.new(name="PHYSICS_BONES")
+        phys_bone_group.color_set = "CUSTOM"
+        phys_bone_group.colors.normal = bpy.context.scene.yurerig.physics_bone_color
+        phys_bone_group.colors.select = bpy.context.scene.yurerig.physics_bone_color
+        phys_bone_group.colors.active = bpy.context.scene.yurerig.physics_bone_color
 
         # Setup physics influence slider
         slider_size = context.scene.yurerig.controller_slider_size
@@ -479,12 +610,15 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         # Setup rig bones
         is_def_bone_pattern = re.compile(r"DEF_.+")
         is_ctrl_bone_pattern = re.compile(r"CTRL_.+")
+        # is_phys_bone_pattern = re.compile(r"PHYS_.+")
         for rel in bone_tree:
             for child_bone in rel.children:
                 if is_ctrl_bone_pattern.match(child_bone.name):
+                    # Already setup
                     continue
 
                 child_bone.bone.hide_select = True
+                child_bone.bone_group = def_bone_group
 
                 # Add `DEF_` prefix to the bone
                 name = child_bone.bone.name
@@ -499,6 +633,35 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     if not is_def_bone_pattern.match(parent_name):
                         parent_name = f"DEF_{parent_name}"
                 def_bones.append(child_bone)
+
+                # Create a `PHYS_` bone
+                phys_name = f"PHYS_{name[4:]}"
+                if phys_name in armature.data.edit_bones:
+                    phys_bone = armature.data.edit_bones[phys_name]
+                else:
+                    phys_bone = armature.data.edit_bones.new(phys_name)
+                phys_bone.head = child_bone.head
+                phys_bone.tail = child_bone.tail
+                if parent_is_active_bone:
+                    phys_bone.parent = armature.data.edit_bones[active_bone.name]
+                else:
+                    parent_phys_name = f"PHYS_{parent_name[4:]}"
+                    phys_bone.parent = armature.data.edit_bones[parent_phys_name]
+                phys_bone.roll = armature.data.edit_bones[name].roll
+                phys_bone.use_connect = child_bone.bone.use_connect
+                phys_bone.show_wire = True
+                armature.update_from_editmode()
+                phys_pose_bone = armature.pose.bones[phys_name]
+                phys_pose_bone.bone.hide_select = True
+                phys_pose_bone.bone_group = phys_bone_group
+                phys_bones.append(phys_pose_bone)
+                phys_bone.layers = [layer == 16 for layer in range(32)]
+
+                # Add a PHYS_ constraint
+                phys_constraint = child_bone.constraints.new("COPY_TRANSFORMS")
+                phys_constraint.target = armature
+                phys_constraint.subtarget = phys_name
+                phys_constraint.influence = 1
 
                 # Create a `CTRL_` bone
                 ctrl_name = f"CTRL_{name[4:]}"
@@ -518,6 +681,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 ctrl_bone.show_wire = True
                 armature.update_from_editmode()
                 ctrl_pose_bone = armature.pose.bones[ctrl_name]
+                ctrl_pose_bone.bone_group = ctrl_bone_group
                 if ctrl_pose_bone.custom_shape is None:
                     ctrl_obj = self.make_controller_object(
                         f"{ctrl_name}_Controller", ctrl_bone.head, ctrl_bone.tail
@@ -550,7 +714,52 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     f"1 - locZ / {max_slider_value}"
                 )
 
+        bpy.ops.rigidbody.world_add()
+        bpy.context.scene.rigidbody_world.enabled = True
+        bpy.context.scene.rigidbody_world.collection = bpy.data.collections.new(
+            "RigidBody Collection"
+        )
         bpy.ops.object.mode_set(mode="POSE")
+        for rel in bone_tree:
+            for child_bone in rel.children:
+                if is_ctrl_bone_pattern.match(child_bone.name):
+                    # Already setup
+                    continue
+
+                if rel.parent == active_bone:
+                    root_name = f"RIGIDBODY_{child_bone.name[4:]}_Root"
+                    if bpy.data.objects.get(root_name) is None:
+                        self.make_rigidbody_root_object(
+                            root_name, child_bone.head, child_bone.tail
+                        )
+                    else:
+                        self.update_rigidbody_rotation(
+                            bpy.data.objects[root_name],
+                            child_bone.head,
+                            child_bone.tail,
+                        )
+
+                name = f"RIGIDBODY_{child_bone.name[4:]}"
+                if bpy.data.objects.get(name) is None:
+                    obj = self.make_rigidbody_object(
+                        name, child_bone.head, child_bone.tail
+                    )
+                else:
+                    obj = bpy.data.objects[name]
+                    self.update_rigidbody_rotation(
+                        obj,
+                        child_bone.head,
+                        child_bone.tail,
+                    )
+
+                phys_name = f"PHYS_{child_bone.name[4:]}"
+                phys_pose_bone = armature.pose.bones[phys_name]
+                if phys_pose_bone.custom_shape is None:
+                    phys_pose_bone.custom_shape = obj
+                    phys_pose_bone.use_custom_shape_bone_size = False
+                    phys_pose_bone.bone_group
+                phys_constraint = phys_pose_bone.constraints.new("COPY_TRANSFORMS")
+                phys_constraint.target = obj
 
         # SET DECO_, CTRL_ and PHYS_ bone not use deform
         for b in deco_bones:
@@ -602,8 +811,18 @@ class YURERIG_PT_PanelUI(bpy.types.Panel):
         col.prop(props, "controller_slider_size")
 
         col.label(text="RigidBodies Parameter")
+        col.prop(props, "rigidbody_root_size")
+        col.prop(props, "rigidbody_size_x")
+        col.prop(props, "rigidbody_size_z")
+        col.prop(props, "rigidbody_gap")
+        col.prop(props, "rigidbody_mass")
 
         col.label(text="RigidBody Joints Parameter")
+
+        col.label(text="Bone Color Set")
+        col.prop(props, "deform_bone_color")
+        col.prop(props, "controller_bone_color")
+        col.prop(props, "physics_bone_color")
 
         col.separator()
         col.operator("orito_itsuki.yurerig_setup")
