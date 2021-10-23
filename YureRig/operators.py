@@ -1100,7 +1100,7 @@ class YURERIG_OT_AddExtraJointOperator(bpy.types.Operator):
         bone1_obj_name = f"RIGIDBODY_{phys_bone1_name[5:]}"
         bone2_obj_name = f"RIGIDBODY_{phys_bone2_name[5:]}"
 
-        joint_name = f"RIGIDBODY_JOINT_{phys_bone1_name[4:]}_{phys_bone2_name[4:]}"
+        joint_name = f"RIGIDBODY_JOINT_{phys_bone1_name[5:]}_{phys_bone2_name[5:]}"
         joint_obj = bpy.data.objects.new(joint_name, None)
         joint_obj.location = (bone1_pos + bone2_pos) / 2
         bpy.context.scene.rigidbody_world.constraints.objects.link(joint_obj)

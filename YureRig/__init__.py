@@ -8,7 +8,7 @@ bl_info = {
     "author": "Orito Itsuki",
     "description": 'Create rig for "Yuremono"',
     "blender": (2, 93, 0),
-    "version": (1, 0, 7),
+    "version": (1, 0, 8),
     "location": "VIEW_3D > <<Addon Tab>>",
     "warning": "",
     "doc_url": "https://github.com/MatchaChoco010/YureRig-Blender",
