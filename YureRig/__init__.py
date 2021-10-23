@@ -1,7 +1,7 @@
 import bpy
 
-__all__ = ["auto_load", "panel_ui", "preferences", "property_group", "yurerig"]
-from . import auto_load, panel_ui, preferences, property_group, yurerig
+__all__ = ["auto_load", "operators", "panel_ui", "preferences", "property_group"]
+from . import auto_load, operators, panel_ui, preferences, property_group
 
 bl_info = {
     "name": "YureRig",

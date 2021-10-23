@@ -651,9 +651,8 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="EDIT")
 
         # Setup rig bones
-        is_def_bone_pattern = re.compile(r"DEF_.+")
-        is_ctrl_bone_pattern = re.compile(r"CTRL_.+")
-        # is_phys_bone_pattern = re.compile(r"PHYS_.+")
+        is_def_bone_pattern = re.compile(r"^DEF_.+")
+        is_ctrl_bone_pattern = re.compile(r"^CTRL_.+")
         for rel in bone_tree:
             for child_bone in rel.children:
                 if is_ctrl_bone_pattern.match(child_bone.name):
@@ -912,5 +911,98 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         for b in ctrl_bones:
             b.bone.select = True
         armature.data.bones.active = active_bone.bone
+
+        return {"FINISHED"}
+
+
+class YURERIG_OT_RemoveOperator(bpy.types.Operator):
+    """
+    Setup DEF_ bones, CTRL_ bones and PHYS_ bones, add rigidbody objects and
+    generic joints, add controller for turn on physics.
+    """
+
+    bl_idname = "orito_itsuki.yurerig_remove"
+    bl_label = "Remove Yure Rig"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object = context.active_object
+        flag: bool = obj and obj.type == "ARMATURE" and obj.mode == "POSE"
+        return flag
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        props = context.scene.yurerig
+        armature: bpy.types.Object = context.active_object
+
+        is_def_bone_pattern = re.compile(r"^DEF_.+")
+        is_ctrl_bone_pattern = re.compile(r"^CTRL_.+")
+        is_deco_bone_pattern = re.compile(r"^DECO_.+")
+        is_phys_bone_pattern = re.compile(r"^PHYS_.+")
+
+        is_rigidbody_joint_pattern = re.compile(r"^RIGIDBODY_JOINT_.+")
+        is_rigidbody_pattern = re.compile(r"^RIGIDBODY_.+")
+        is_rigidbody_goal_pattern = re.compile(r"^RIGIDBODY_GOAL_.+")
+        is_controller_boneshape = re.compile(r".+BoneShape$")
+
+        bpy.ops.object.mode_set(mode="EDIT")
+
+        armature.pose.bone_groups.remove(armature.pose.bone_groups["DEFORM_BONES"])
+        armature.pose.bone_groups.remove(armature.pose.bone_groups["CONTROLLER_BONES"])
+        armature.pose.bone_groups.remove(armature.pose.bone_groups["PHYSICS_BONES"])
+
+        for b in armature.pose.bones:
+            if is_def_bone_pattern.match(b.name):
+                b.bone_group = None
+                b.constraints.remove(b.constraints[0])
+                for d in armature.animation_data.drivers:
+                    if b.name in d.data_path:
+                        armature.animation_data.drivers.remove(d)
+                b.constraints.remove(b.constraints[0])
+
+        for b in armature.data.edit_bones:
+            if (
+                is_ctrl_bone_pattern.match(b.name)
+                or is_phys_bone_pattern.match(b.name)
+                or is_deco_bone_pattern.match(b.name)
+            ):
+                armature.data.edit_bones.remove(b)
+
+        for obj in props.joints_collection.objects:
+            if is_rigidbody_joint_pattern.match(obj.name):
+                bpy.data.objects.remove(obj)
+
+        for obj in props.rigidbodies_collection.objects:
+            if is_rigidbody_pattern.match(obj.name):
+                bpy.data.objects.remove(obj)
+
+        for obj in props.rigidbodies_reset_goal_collection.objects:
+            if is_rigidbody_goal_pattern.match(obj.name):
+                bpy.data.objects.remove(obj)
+
+        for obj in props.controllers_collection.objects:
+            if is_controller_boneshape.match(obj.name):
+                bpy.data.objects.remove(obj)
+
+        bpy.ops.object.mode_set(mode="POSE")
+
+        for b in armature.pose.bones:
+            if is_def_bone_pattern.match(b.name):
+                b.bone.hide_select = False
+
+        if len(props.joints_collection.all_objects) == 0:
+            bpy.data.collections.remove(props.joints_collection)
+
+        if len(props.rigidbodies_collection.all_objects) == 0:
+            bpy.data.collections.remove(props.rigidbodies_collection)
+
+        if len(props.rigidbodies_reset_goal_collection.all_objects) == 0:
+            bpy.data.collections.remove(props.rigidbodies_reset_goal_collection)
+
+        if len(props.controllers_collection.all_objects) == 0:
+            bpy.data.collections.remove(props.controllers_collection)
+
+        if len(props.root_collection.all_objects) == 0:
+            bpy.data.collections.remove(props.root_collection)
 
         return {"FINISHED"}

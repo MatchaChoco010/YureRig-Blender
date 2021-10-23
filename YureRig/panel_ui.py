@@ -294,6 +294,9 @@ class YURERIG_PT_Setup_PanelUI(bpy.types.Panel):
         col.separator()
         col.operator("orito_itsuki.yurerig_setup")
 
+        col.separator()
+        col.operator("orito_itsuki.yurerig_remove")
+
 
 class YURERIG_PT_MAIN_PanelUI(bpy.types.Panel):
     """
