@@ -1078,8 +1078,8 @@ class YURERIG_OT_AddExtraJointOperator(bpy.types.Operator):
         phys_bone2_name = f"PHYS_{props.selected_ctrl_bone2[5:]}"
         phys_bone1 = armature.pose.bones[phys_bone1_name]
         phys_bone2 = armature.pose.bones[phys_bone2_name]
-        bone1_pos = phys_bone1.tail if props.bone1_joint_pos_tail else phys_bone1.head
-        bone2_pos = phys_bone2.tail if props.bone2_joint_pos_tail else phys_bone2.head
+        bone1_pos = phys_bone1.tail
+        bone2_pos = phys_bone2.tail
         bone1_obj_name = f"RIGIDBODY_{phys_bone1_name[5:]}"
         bone2_obj_name = f"RIGIDBODY_{phys_bone2_name[5:]}"
 
@@ -1361,5 +1361,86 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
             + f"update {updated_joints_num} joints "
             + f"and {updated_rigidbody_num} rigidbodies",
         )
+
+        return {"FINISHED"}
+
+
+class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
+
+    bl_idname = "orito_itsuki.yurerig_set_rigidbody_and_joint_start_position"
+    bl_label = "Set Yure Rig RigidBody And Joint Start Position"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object = context.active_object
+        is_pose: bool = obj and obj.type == "ARMATURE" and obj.mode == "POSE"
+        return is_pose
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        props = context.scene.yurerig
+        armature: bpy.types.Object = context.active_object
+
+        bpy.ops.object.mode_set(mode="EDIT")
+
+        rigidbody_pattern = re.compile(r"^RIGIDBODY_([\w|\d|\.]+)")
+        rigidbody_root_pattern = re.compile(r"^RIGIDBODY_([\w|\d|\.]+)_Root")
+
+        for obj in props.rigidbodies_collection.objects:
+            match = rigidbody_root_pattern.match(obj.name)
+            if match is not None:
+                continue
+            match = rigidbody_pattern.match(obj.name)
+            if match is not None:
+                ctrl_bone_name = f"CTRL_{match.groups()[0]}"
+                ctrl_edit_bone = armature.data.edit_bones[ctrl_bone_name]
+                ctrl_pose_bone = armature.pose.bones[ctrl_bone_name]
+                phys_bone_name = f"PHYS_{match.groups()[0]}"
+                phys_edit_bone = armature.data.edit_bones[phys_bone_name]
+                phys_pose_bone = armature.pose.bones[phys_bone_name]
+                phys_edit_bone.head = ctrl_edit_bone.head
+                phys_edit_bone.tail = ctrl_edit_bone.tail
+                phys_edit_bone.roll = ctrl_edit_bone.roll
+                armature.update_from_editmode()
+                phys_pose_bone.rotation_quaternion = ctrl_pose_bone.rotation_quaternion
+
+                rigidbody_obj_name = f"RIGIDBODY_{match.groups()[0]}"
+                rigidbody_obj = bpy.data.objects[rigidbody_obj_name]
+                dir_x = ctrl_pose_bone.x_axis
+                dir_y = ctrl_pose_bone.y_axis
+                dir_z = ctrl_pose_bone.z_axis
+                mat = Matrix.Identity(4)
+                mat.col[0] = dir_x.to_4d()
+                mat.col[1] = dir_y.to_4d()
+                mat.col[2] = dir_z.to_4d()
+                rigidbody_obj.matrix_world = mat
+                rigidbody_obj.location = (ctrl_pose_bone.tail + ctrl_pose_bone.head) / 2
+
+        armature.update_from_editmode()
+
+        bpy.ops.object.mode_set(mode="POSE")
+
+        joint_root_pattern = re.compile(r"^RIGIDBODY_JOINT_([\w|\d|\.]+)")
+        joint_pattern = re.compile(r"^RIGIDBODY_JOINT_([\w|\d|\.]+)_([\w|\d|\.]+)")
+
+        for j in props.joints_collection.objects:
+            match = joint_pattern.match(j.name)
+            if match is not None:
+                bone1_name = f"PHYS_{match.groups()[0]}"
+                bone2_name = f"PHYS_{match.groups()[1]}"
+                bone1 = armature.pose.bones[bone1_name]
+                bone2 = armature.pose.bones[bone2_name]
+                if bone1.parent == bone2:
+                    j.location = (bone1.head + bone2.tail) / 2
+                elif bone2.parent == bone1:
+                    j.location = (bone1.tail + bone2.head) / 2
+                else:
+                    j.location = (bone1.tail + bone2.tail) / 2
+                continue
+            match = joint_root_pattern.match(j.name)
+            if match is not None:
+                bone_name = f"PHYS_{match.groups()[0]}"
+                j.location = armature.pose.bones[bone_name].head
+                continue
 
         return {"FINISHED"}

@@ -312,31 +312,31 @@ class YURERIG_PT_Setup_PanelUI(bpy.types.Panel):
         box = col.box()
         box.label(text="Add Extra Joint")
 
-        split = box.split(factor=0.8)
-        split.prop(
+        box.prop(
             props,
             "selected_ctrl_bone1",
             icon="BONE_DATA",
             text="Bone 1",
         )
-        label = "Tail" if props.bone1_joint_pos_tail else "Head"
-        split.prop(props, "bone1_joint_pos_tail", text=label, toggle=True)
 
-        split = box.split(factor=0.8)
-        split.prop(
+        box.prop(
             props,
             "selected_ctrl_bone2",
             icon="BONE_DATA",
             text="Bone 2",
         )
-        label = "Tail" if props.bone2_joint_pos_tail else "Head"
-        split.prop(props, "bone2_joint_pos_tail", text=label, toggle=True)
         box.operator("orito_itsuki.yurerig_add_extra_joint")
 
         col.separator()
         col.operator("orito_itsuki.yurerig_update_parameters")
 
-        col.separator()
+        col.separator(factor=3)
+        col.operator(
+            "orito_itsuki.yurerig_set_rigidbody_and_joint_start_position",
+            text="<|   Set RigidBodies Start Position",
+        )
+
+        col.separator(factor=5)
         col.operator("orito_itsuki.yurerig_remove")
 
 

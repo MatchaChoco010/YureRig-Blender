@@ -197,5 +197,3 @@ class YURERIG_Props(bpy.types.PropertyGroup):
 
     selected_ctrl_bone1: bpy.props.EnumProperty(items=ctrl_bones)  # type: ignore
     selected_ctrl_bone2: bpy.props.EnumProperty(items=ctrl_bones)  # type: ignore
-    bone1_joint_pos_tail: bpy.props.BoolProperty(default=True)  # type: ignore
-    bone2_joint_pos_tail: bpy.props.BoolProperty(default=True)  # type: ignore
