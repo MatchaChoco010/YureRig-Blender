@@ -794,18 +794,21 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 ctrl_influence_driver.driver.expression = "1 - locZ / maxLocZ"
 
         # Setup rigid body world
+        bpy.ops.object.mode_set(mode="OBJECT")
         if bpy.context.scene.rigidbody_world is None:
             bpy.ops.rigidbody.world_add()
-            if bpy.context.scene.rigidbody_world is not None:
-                bpy.context.scene.rigidbody_world.enabled = True
-                if bpy.context.scene.rigidbody_world.collection is None:
-                    bpy.context.scene.rigidbody_world.collection = (
-                        bpy.data.collections.new("RigidBody Collection")
-                    )
-                if bpy.context.scene.rigidbody_world.constraints is None:
-                    bpy.context.scene.rigidbody_world.constraints = (
-                        bpy.data.collections.new("RigidBody Constraint Collection")
-                    )
+        if bpy.context.scene.rigidbody_world is not None:
+            bpy.context.scene.rigidbody_world.enabled = True
+            if bpy.context.scene.rigidbody_world.collection is None:
+                bpy.context.scene.rigidbody_world.collection = bpy.data.collections.new(
+                    "RigidBody Collection"
+                )
+            if bpy.context.scene.rigidbody_world.constraints is None:
+                bpy.context.scene.rigidbody_world.constraints = (
+                    bpy.data.collections.new("RigidBody Constraint Collection")
+                )
+
+        bpy.ops.object.mode_set(mode="EDIT")
 
         # Create Rigid Body Objects
         for rel in bone_tree:
