@@ -1,4 +1,5 @@
-from typing import List, Optional
+import re
+from typing import List, Optional, Tuple
 
 import bpy
 
@@ -288,11 +289,49 @@ class YURERIG_PT_Setup_PanelUI(bpy.types.Panel):
     bl_region_type = "UI"
     bl_parent_id = "YURERIG_PT_MAIN_PanelUI"
 
+    def ctrl_bones(self, context: bpy.types.Context) -> List[Tuple[str, str, str]]:
+        armature = bpy.context.active_object
+        is_ctrl_bone_pattern = re.compile(r"^CTRL_.+")
+        is_slider_bone_pattern = re.compile(r"^CTRL_physics_influence_slider_.+")
+        return [
+            (bone.name, bone.name, "")
+            for bone in armature.data.bones
+            if is_ctrl_bone_pattern.match(bone.name)
+            and not is_slider_bone_pattern.match(bone.name)
+        ]
+
     def draw(self, context: bpy.types.Context) -> None:
+        props = context.scene.yurerig
+
         col = self.layout.column()
 
         col.separator()
         col.operator("orito_itsuki.yurerig_setup")
+
+        col.separator()
+        box = col.box()
+        box.label(text="Add Extra Joint")
+
+        split = box.split(factor=0.8)
+        split.prop(
+            props,
+            "selected_ctrl_bone1",
+            icon="BONE_DATA",
+            text="Bone 1",
+        )
+        label = "Tail" if props.bone1_joint_pos_tail else "Head"
+        split.prop(props, "bone1_joint_pos_tail", text=label, toggle=True)
+
+        split = box.split(factor=0.8)
+        split.prop(
+            props,
+            "selected_ctrl_bone2",
+            icon="BONE_DATA",
+            text="Bone 2",
+        )
+        label = "Tail" if props.bone2_joint_pos_tail else "Head"
+        split.prop(props, "bone2_joint_pos_tail", text=label, toggle=True)
+        box.operator("orito_itsuki.yurerig_add_extra_joint")
 
         col.separator()
         col.operator("orito_itsuki.yurerig_remove")
