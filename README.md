@@ -2,6 +2,8 @@
 
 揺れもの用Rigのセットアップを行うアドオンです。
 
+FK/Physics切り替えのスライダーがあることが特徴です。
+
 ![video](./img/video.gif)
 
 質問・要望は[Discussions](https://github.com/MatchaChoco010/YureRig-Blender/discussions)か[私のTwitter](https://twitter.com/MatchaChoco010)までお願いします。
