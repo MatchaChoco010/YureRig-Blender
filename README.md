@@ -4,6 +4,8 @@
 
 ![video](./img/video.gif)
 
+質問・要望は[Discussions](https://github.com/MatchaChoco010/YureRig-Blender/discussions)か[私のTwitter](https://twitter.com/MatchaChoco010)までお願いします。
+
 ## 使い方
 
 ### 基本的な使い方
