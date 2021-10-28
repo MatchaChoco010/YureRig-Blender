@@ -710,7 +710,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 child_edit_bone = armature.data.edit_bones[child_bone.name]
 
                 # Create a `PHYS_YURERIG_` bone
-                phys_name = f"PHYS_YURERIG_{name[4:]}"
+                phys_name = f"PHYS_YURERIG_{name[12:]}"
                 if phys_name in armature.data.edit_bones:
                     phys_bone = armature.data.edit_bones[phys_name]
                 else:
@@ -720,7 +720,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 if parent_is_active_bone:
                     phys_bone.parent = armature.data.edit_bones[active_bone.name]
                 else:
-                    parent_phys_name = f"PHYS_YURERIG_{parent_name[4:]}"
+                    parent_phys_name = f"PHYS_YURERIG_{parent_name[12:]}"
                     phys_bone.parent = armature.data.edit_bones[parent_phys_name]
                 phys_bone.roll = armature.data.edit_bones[name].roll
                 phys_bone.use_connect = child_bone.bone.use_connect
@@ -739,7 +739,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 phys_constraint.influence = 1
 
                 # Create a `CTRL_YURERIG_` bone
-                ctrl_name = f"CTRL_YURERIG_{name[4:]}"
+                ctrl_name = f"CTRL_YURERIG_{name[12:]}"
                 if ctrl_name in armature.data.edit_bones:
                     ctrl_bone = armature.data.edit_bones[ctrl_name]
                 else:
@@ -749,7 +749,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 if parent_is_active_bone:
                     ctrl_bone.parent = armature.data.edit_bones[active_bone.name]
                 else:
-                    parent_ctrl_name = f"CTRL_YURERIG_{parent_name[4:]}"
+                    parent_ctrl_name = f"CTRL_YURERIG_{parent_name[12:]}"
                     ctrl_bone.parent = armature.data.edit_bones[parent_ctrl_name]
                 ctrl_bone.roll = armature.data.edit_bones[name].roll
                 ctrl_bone.use_connect = child_bone.bone.use_connect
@@ -824,11 +824,11 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     continue
                 child_edit_bone = armature.data.edit_bones[child_bone.name]
 
-                phys_name = f"PHYS_YURERIG_{child_bone.name[4:]}"
+                phys_name = f"PHYS_YURERIG_{child_bone.name[12:]}"
                 phys_pose_bone = armature.pose.bones[phys_name]
 
                 if rel.parent == active_bone:
-                    root_name = f"RIGIDBODY_YURERIG_{child_bone.name[4:]}_Root"
+                    root_name = f"RIGIDBODY_YURERIG_{child_bone.name[12:]}_Root"
                     if bpy.data.objects.get(root_name) is None:
                         root_obj = self.make_rigidbody_root_object(
                             root_name,
@@ -847,7 +847,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                             child_edit_bone.z_axis,
                         )
 
-                name = f"RIGIDBODY_YURERIG_{child_bone.name[4:]}"
+                name = f"RIGIDBODY_YURERIG_{child_bone.name[12:]}"
                 if bpy.data.objects.get(name) is None:
                     obj = self.make_rigidbody_object(
                         name,
@@ -879,9 +879,9 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         for rel in bone_tree:
             if rel.parent == active_bone:
                 for child_bone in rel.children:
-                    root_obj_name = f"RIGIDBODY_YURERIG_{child_bone.name[4:]}_Root"
-                    name = f"RIGIDBODY_YURERIG_{child_bone.name[4:]}"
-                    joint_name = f"RIGIDBODY_JOINT_YURERIG_{child_bone.name[4:]}"
+                    root_obj_name = f"RIGIDBODY_YURERIG_{child_bone.name[12:]}_Root"
+                    name = f"RIGIDBODY_YURERIG_{child_bone.name[12:]}"
+                    joint_name = f"RIGIDBODY_JOINT_YURERIG_{child_bone.name[12:]}"
                     joint_obj = bpy.data.objects.new(joint_name, None)
                     joint_obj.location = child_edit_bone.head
                     if bpy.context.scene.rigidbody_world is not None:
@@ -897,11 +897,11 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     bpy.context.scene.yurerig.joints_collection.objects.link(joint_obj)
             else:
                 for child_bone in rel.children:
-                    parent_obj_name = f"RIGIDBODY_YURERIG_{rel.parent.name[4:]}"
-                    child_obj_name = f"RIGIDBODY_YURERIG_{child_bone.name[4:]}"
+                    parent_obj_name = f"RIGIDBODY_YURERIG_{rel.parent.name[12:]}"
+                    child_obj_name = f"RIGIDBODY_YURERIG_{child_bone.name[12:]}"
                     joint_name = (
-                        f"RIGIDBODY_JOINT_YURERIG_{rel.parent.name[4:]}_"
-                        + child_bone.name[4:]
+                        f"RIGIDBODY_JOINT_YURERIG_{rel.parent.name[12:]}_"
+                        + child_bone.name[12:]
                     )
                     joint_obj = bpy.data.objects.new(joint_name, None)
                     joint_obj.location = (rel.parent.tail + child_edit_bone.head) / 2
@@ -927,10 +927,10 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
 
                 child_edit_bone = armature.data.edit_bones[child_bone.name]
 
-                phys_name = f"PHYS_YURERIG_{child_bone.name[4:]}"
+                phys_name = f"PHYS_YURERIG_{child_bone.name[12:]}"
                 phys_pose_bone = armature.pose.bones[phys_name]
 
-                name = f"RIGIDBODY_GOAL_YURERIG_{child_bone.name[4:]}"
+                name = f"RIGIDBODY_GOAL_YURERIG_{child_bone.name[12:]}"
                 if bpy.data.objects.get(name) is None:
                     obj = self.make_rigidbody_reset_goal_object(
                         name,
@@ -939,7 +939,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                         child_edit_bone.z_axis,
                         physics_influence_slider_name,
                         armature,
-                        bpy.data.objects[f"RIGIDBODY_YURERIG_{child_bone.name[4:]}"],
+                        bpy.data.objects[f"RIGIDBODY_YURERIG_{child_bone.name[12:]}"],
                     )
                 else:
                     obj = bpy.data.objects[name]
@@ -951,11 +951,11 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     )
                 copy_location = obj.constraints.new("COPY_LOCATION")
                 copy_location.target = armature
-                copy_location.subtarget = f"CTRL_YURERIG_{child_bone.name[4:]}"
+                copy_location.subtarget = f"CTRL_YURERIG_{child_bone.name[12:]}"
                 copy_location.head_tail = 0.5
                 copy_rotation = obj.constraints.new("COPY_ROTATION")
                 copy_rotation.target = armature
-                copy_rotation.subtarget = f"CTRL_YURERIG_{child_bone.name[4:]}"
+                copy_rotation.subtarget = f"CTRL_YURERIG_{child_bone.name[12:]}"
 
         bpy.ops.object.mode_set(mode="POSE")
 
@@ -1100,17 +1100,17 @@ class YURERIG_OT_AddExtraJointOperator(bpy.types.Operator):
         props = context.scene.yurerig
         armature: bpy.types.Object = context.active_object
 
-        phys_bone1_name = f"PHYS_YURERIG_{props.selected_ctrl_bone1[5:]}"
-        phys_bone2_name = f"PHYS_YURERIG_{props.selected_ctrl_bone2[5:]}"
+        phys_bone1_name = f"PHYS_YURERIG_{props.selected_ctrl_bone1[13:]}"
+        phys_bone2_name = f"PHYS_YURERIG_{props.selected_ctrl_bone2[13:]}"
         phys_bone1 = armature.pose.bones[phys_bone1_name]
         phys_bone2 = armature.pose.bones[phys_bone2_name]
         bone1_pos = phys_bone1.tail
         bone2_pos = phys_bone2.tail
-        bone1_obj_name = f"RIGIDBODY_YURERIG_{phys_bone1_name[5:]}"
-        bone2_obj_name = f"RIGIDBODY_YURERIG_{phys_bone2_name[5:]}"
+        bone1_obj_name = f"RIGIDBODY_YURERIG_{phys_bone1_name[13:]}"
+        bone2_obj_name = f"RIGIDBODY_YURERIG_{phys_bone2_name[13:]}"
 
         joint_name = (
-            f"RIGIDBODY_JOINT_YURERIG_{phys_bone1_name[5:]}_{phys_bone2_name[5:]}"
+            f"RIGIDBODY_JOINT_YURERIG_{phys_bone1_name[13:]}_{phys_bone2_name[13:]}"
         )
         joint_obj = bpy.data.objects.new(joint_name, None)
         joint_obj.location = (bone1_pos + bone2_pos) / 2
@@ -1171,7 +1171,7 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
                 gap = bpy.context.scene.yurerig.rigidbody_gap
                 length = (head - tail).length
 
-                name = b.name[5:]
+                name = b.name[13:]
 
                 ctrl_bone = armature.pose.bones.get(f"CTRL_YURERIG_{name}")
                 if ctrl_bone is not None:
