@@ -196,8 +196,8 @@ def make_controller_object(name: str, head: Vector, tail: Vector) -> bpy.types.O
 
 class YURERIG_OT_SetupOperator(bpy.types.Operator):
     """
-    Setup DEF_ bones, CTRL_ bones and PHYS_ bones, add rigidbody objects and
-    generic joints, add controller for turn on physics.
+    Setup DEF_YURERIG_ bones, CTRL_YURERIG_ bones and PHYS_YURERIG_ bones,
+    add rigidbody objects and generic joints, add controller for turn on physics.
     """
 
     bl_idname = "orito_itsuki.yurerig_setup"
@@ -569,11 +569,13 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
 
         bpy.ops.object.mode_set(mode="OBJECT")
 
-        deco_phys_curve = bpy.data.curves.new(type="FONT", name="DECO_PHYS")
+        deco_phys_curve = bpy.data.curves.new(type="FONT", name="DECO_YURERIG_PHYS")
         deco_phys_curve.align_x = "CENTER"
         deco_phys_curve.align_y = "TOP"
         deco_phys_curve.size = slider_size / 6
-        deco_phys = bpy.data.objects.new("DECO_PHYS", object_data=deco_phys_curve)
+        deco_phys = bpy.data.objects.new(
+            "DECO_YURERIG_PHYS", object_data=deco_phys_curve
+        )
         deco_phys.data.body = "PHYS"
         deco_phys.location = Vector((0, 0, slider_size * 4 / 6))
         deco_phys.rotation_euler = Vector((math.radians(90), 0, 0))
@@ -584,11 +586,11 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         bpy.ops.object.convert(target="MESH")
         context.scene.yurerig.controllers_collection.objects.link(deco_phys)
 
-        deco_fk_curve = bpy.data.curves.new(type="FONT", name="DECO_FK")
+        deco_fk_curve = bpy.data.curves.new(type="FONT", name="DECO_YURERIG_FK")
         deco_fk_curve.align_x = "CENTER"
         deco_fk_curve.align_y = "TOP"
         deco_fk_curve.size = slider_size / 6
-        deco_fk = bpy.data.objects.new("DECO_FK", object_data=deco_fk_curve)
+        deco_fk = bpy.data.objects.new("DECO_YURERIG_FK", object_data=deco_fk_curve)
         deco_fk.data.body = "FK"
         deco_fk.location = Vector((0, 0, -slider_size / 6))
         deco_fk.rotation_euler = Vector((math.radians(90), 0, 0))
@@ -604,16 +606,18 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="EDIT")
         i = 0
         physics_influence_slider_root_name = (
-            f"DECO_physics_influence_slider_root_{i}_BoneShape"
+            f"DECO_YURERIG_physics_influence_slider_root_{i}_BoneShape_YURERIG"
         )
-        physics_influence_slider_name = f"CTRL_physics_influence_slider_{i}_BoneShape"
+        physics_influence_slider_name = (
+            f"CTRL_YURERIG_physics_influence_slider_{i}_BoneShape_YURERIG"
+        )
         while physics_influence_slider_root_name in armature.data.bones:
             i += 1
             physics_influence_slider_root_name = (
-                f"DECO_physics_influence_slider_root_{i}_BoneShape"
+                f"DECO_YURERIG_physics_influence_slider_root_{i}_BoneShape_YURERIG"
             )
             physics_influence_slider_name = (
-                f"CTRL_physics_influence_slider_{i}_BoneShape"
+                f"CTRL_YURERIG_physics_influence_slider_{i}_BoneShape_YURERIG"
             )
         physics_influence_slider_root_bone = armature.data.edit_bones.new(
             physics_influence_slider_root_name
@@ -679,8 +683,8 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="EDIT")
 
         # Setup rig bones
-        is_def_bone_pattern = re.compile(r"^DEF_.+")
-        is_ctrl_bone_pattern = re.compile(r"^CTRL_.+")
+        is_def_bone_pattern = re.compile(r"^DEF_YURERIG_.+")
+        is_ctrl_bone_pattern = re.compile(r"^CTRL_YURERIG_.+")
         for rel in bone_tree:
             for child_bone in rel.children:
                 if is_ctrl_bone_pattern.match(child_bone.name):
@@ -690,10 +694,10 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 child_bone.bone.hide_select = True
                 child_bone.bone_group = def_bone_group
 
-                # Add `DEF_` prefix to the bone
+                # Add `DEF_YURERIG_` prefix to the bone
                 name = child_bone.bone.name
                 if not is_def_bone_pattern.match(name):
-                    name = f"DEF_{name}"
+                    name = f"DEF_YURERIG_{name}"
                     child_bone.bone.name = name
                 parent_name = rel.parent.bone.name
                 if parent_name == active_bone.name:
@@ -701,12 +705,12 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 else:
                     parent_is_active_bone = False
                     if not is_def_bone_pattern.match(parent_name):
-                        parent_name = f"DEF_{parent_name}"
+                        parent_name = f"DEF_YURERIG_{parent_name}"
                 def_bones.append(child_bone)
                 child_edit_bone = armature.data.edit_bones[child_bone.name]
 
-                # Create a `PHYS_` bone
-                phys_name = f"PHYS_{name[4:]}"
+                # Create a `PHYS_YURERIG_` bone
+                phys_name = f"PHYS_YURERIG_{name[4:]}"
                 if phys_name in armature.data.edit_bones:
                     phys_bone = armature.data.edit_bones[phys_name]
                 else:
@@ -716,7 +720,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 if parent_is_active_bone:
                     phys_bone.parent = armature.data.edit_bones[active_bone.name]
                 else:
-                    parent_phys_name = f"PHYS_{parent_name[4:]}"
+                    parent_phys_name = f"PHYS_YURERIG_{parent_name[4:]}"
                     phys_bone.parent = armature.data.edit_bones[parent_phys_name]
                 phys_bone.roll = armature.data.edit_bones[name].roll
                 phys_bone.use_connect = child_bone.bone.use_connect
@@ -728,14 +732,14 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 phys_bones.append(phys_pose_bone)
                 phys_bone.layers = [layer == 16 for layer in range(32)]
 
-                # Add a PHYS_ constraint
+                # Add a PHYS_YURERIG_ constraint
                 phys_constraint = child_bone.constraints.new("COPY_TRANSFORMS")
                 phys_constraint.target = armature
                 phys_constraint.subtarget = phys_name
                 phys_constraint.influence = 1
 
-                # Create a `CTRL_` bone
-                ctrl_name = f"CTRL_{name[4:]}"
+                # Create a `CTRL_YURERIG_` bone
+                ctrl_name = f"CTRL_YURERIG_{name[4:]}"
                 if ctrl_name in armature.data.edit_bones:
                     ctrl_bone = armature.data.edit_bones[ctrl_name]
                 else:
@@ -745,7 +749,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 if parent_is_active_bone:
                     ctrl_bone.parent = armature.data.edit_bones[active_bone.name]
                 else:
-                    parent_ctrl_name = f"CTRL_{parent_name[4:]}"
+                    parent_ctrl_name = f"CTRL_YURERIG_{parent_name[4:]}"
                     ctrl_bone.parent = armature.data.edit_bones[parent_ctrl_name]
                 ctrl_bone.roll = armature.data.edit_bones[name].roll
                 ctrl_bone.use_connect = child_bone.bone.use_connect
@@ -755,7 +759,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 ctrl_pose_bone.bone_group = ctrl_bone_group
                 if ctrl_pose_bone.custom_shape is None:
                     ctrl_obj = make_controller_object(
-                        f"{ctrl_name}_ControllerBoneShape",
+                        f"{ctrl_name}_ControllerBoneShape_YURERIG",
                         ctrl_bone.head,
                         ctrl_bone.tail,
                     )
@@ -769,7 +773,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 ctrl_bones.append(ctrl_pose_bone)
                 ctrl_bone.layers = [layer == 8 for layer in range(32)]
 
-                # Add a CTRL_ constraint
+                # Add a CTRL_YURERIG_ constraint
                 ctrl_constraint = child_bone.constraints.new("COPY_TRANSFORMS")
                 ctrl_constraint.target = armature
                 ctrl_constraint.subtarget = ctrl_name
@@ -787,7 +791,9 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 max_var.type = "SINGLE_PROP"
                 max_var.targets[0].id = armature
                 max_var.targets[0].data_path = (
-                    'pose.bones["CTRL_physics_influence_slider_0_BoneShape"]'
+                    'pose.bones["CTRL_YURERIG_'
+                    + "physics_influence_slider_0"
+                    + '_BoneShape_YURERIG"]'
                     + '["Max Slider Value"]'
                 )
                 ctrl_influence_driver.driver.expression = "locZ == 0"
@@ -818,11 +824,11 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     continue
                 child_edit_bone = armature.data.edit_bones[child_bone.name]
 
-                phys_name = f"PHYS_{child_bone.name[4:]}"
+                phys_name = f"PHYS_YURERIG_{child_bone.name[4:]}"
                 phys_pose_bone = armature.pose.bones[phys_name]
 
                 if rel.parent == active_bone:
-                    root_name = f"RIGIDBODY_{child_bone.name[4:]}_Root"
+                    root_name = f"RIGIDBODY_YURERIG_{child_bone.name[4:]}_Root"
                     if bpy.data.objects.get(root_name) is None:
                         root_obj = self.make_rigidbody_root_object(
                             root_name,
@@ -841,7 +847,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                             child_edit_bone.z_axis,
                         )
 
-                name = f"RIGIDBODY_{child_bone.name[4:]}"
+                name = f"RIGIDBODY_YURERIG_{child_bone.name[4:]}"
                 if bpy.data.objects.get(name) is None:
                     obj = self.make_rigidbody_object(
                         name,
@@ -860,7 +866,9 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
 
                 if phys_pose_bone.custom_shape is None:
                     phys_pose_bone.custom_shape = self.make_phys_bone_object(
-                        f"{name}_BoneShape", child_edit_bone.head, child_edit_bone.tail
+                        f"{name}_BoneShape_YURERIG",
+                        child_edit_bone.head,
+                        child_edit_bone.tail,
                     )
                     phys_pose_bone.use_custom_shape_bone_size = False
 
@@ -871,9 +879,9 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         for rel in bone_tree:
             if rel.parent == active_bone:
                 for child_bone in rel.children:
-                    root_obj_name = f"RIGIDBODY_{child_bone.name[4:]}_Root"
-                    name = f"RIGIDBODY_{child_bone.name[4:]}"
-                    joint_name = f"RIGIDBODY_JOINT_{child_bone.name[4:]}"
+                    root_obj_name = f"RIGIDBODY_YURERIG_{child_bone.name[4:]}_Root"
+                    name = f"RIGIDBODY_YURERIG_{child_bone.name[4:]}"
+                    joint_name = f"RIGIDBODY_JOINT_YURERIG_{child_bone.name[4:]}"
                     joint_obj = bpy.data.objects.new(joint_name, None)
                     joint_obj.location = child_edit_bone.head
                     if bpy.context.scene.rigidbody_world is not None:
@@ -889,10 +897,11 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     bpy.context.scene.yurerig.joints_collection.objects.link(joint_obj)
             else:
                 for child_bone in rel.children:
-                    parent_obj_name = f"RIGIDBODY_{rel.parent.name[4:]}"
-                    child_obj_name = f"RIGIDBODY_{child_bone.name[4:]}"
+                    parent_obj_name = f"RIGIDBODY_YURERIG_{rel.parent.name[4:]}"
+                    child_obj_name = f"RIGIDBODY_YURERIG_{child_bone.name[4:]}"
                     joint_name = (
-                        f"RIGIDBODY_JOINT_{rel.parent.name[4:]}_{child_bone.name[4:]}"
+                        f"RIGIDBODY_JOINT_YURERIG_{rel.parent.name[4:]}_"
+                        + child_bone.name[4:]
                     )
                     joint_obj = bpy.data.objects.new(joint_name, None)
                     joint_obj.location = (rel.parent.tail + child_edit_bone.head) / 2
@@ -918,10 +927,10 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
 
                 child_edit_bone = armature.data.edit_bones[child_bone.name]
 
-                phys_name = f"PHYS_{child_bone.name[4:]}"
+                phys_name = f"PHYS_YURERIG_{child_bone.name[4:]}"
                 phys_pose_bone = armature.pose.bones[phys_name]
 
-                name = f"RIGIDBODY_GOAL_{child_bone.name[4:]}"
+                name = f"RIGIDBODY_GOAL_YURERIG_{child_bone.name[4:]}"
                 if bpy.data.objects.get(name) is None:
                     obj = self.make_rigidbody_reset_goal_object(
                         name,
@@ -930,7 +939,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                         child_edit_bone.z_axis,
                         physics_influence_slider_name,
                         armature,
-                        bpy.data.objects[f"RIGIDBODY_{child_bone.name[4:]}"],
+                        bpy.data.objects[f"RIGIDBODY_YURERIG_{child_bone.name[4:]}"],
                     )
                 else:
                     obj = bpy.data.objects[name]
@@ -942,15 +951,15 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                     )
                 copy_location = obj.constraints.new("COPY_LOCATION")
                 copy_location.target = armature
-                copy_location.subtarget = f"CTRL_{child_bone.name[4:]}"
+                copy_location.subtarget = f"CTRL_YURERIG_{child_bone.name[4:]}"
                 copy_location.head_tail = 0.5
                 copy_rotation = obj.constraints.new("COPY_ROTATION")
                 copy_rotation.target = armature
-                copy_rotation.subtarget = f"CTRL_{child_bone.name[4:]}"
+                copy_rotation.subtarget = f"CTRL_YURERIG_{child_bone.name[4:]}"
 
         bpy.ops.object.mode_set(mode="POSE")
 
-        # SET DECO_, CTRL_ and PHYS_ bone not use deform
+        # SET DECO_YURERIG_, CTRL_YURERIG_ and PHYS_YURERIG_ bone not use deform
         for b in deco_bones:
             b.bone.use_deform = False
         for b in ctrl_bones:
@@ -958,7 +967,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         for b in phys_bones:
             b.bone.use_deform = False
 
-        # Set DEF_, DECO_ and PHYS_ bone non selectable
+        # Set DEF_YURERIG_, DECO_YURERIG_ and PHYS_YURERIG_ bone non selectable
         for b in def_bones:
             b.bone.hide_select = True
         for b in deco_bones:
@@ -966,7 +975,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         for b in phys_bones:
             b.bone.hide_select = True
 
-        # Select CTRL_ bones
+        # Select CTRL_YURERIG_ bones
         for b in armature.data.bones:
             b.select = False
         for b in ctrl_bones:
@@ -994,15 +1003,15 @@ class YURERIG_OT_RemoveOperator(bpy.types.Operator):
         props = context.scene.yurerig
         armature: bpy.types.Object = context.active_object
 
-        is_def_bone_pattern = re.compile(r"^DEF_.+")
-        is_ctrl_bone_pattern = re.compile(r"^CTRL_.+")
-        is_deco_bone_pattern = re.compile(r"^DECO_.+")
-        is_phys_bone_pattern = re.compile(r"^PHYS_.+")
+        is_def_bone_pattern = re.compile(r"^DEF_YURERIG_.+")
+        is_ctrl_bone_pattern = re.compile(r"^CTRL_YURERIG_.+")
+        is_deco_bone_pattern = re.compile(r"^DECO_YURERIG_.+")
+        is_phys_bone_pattern = re.compile(r"^PHYS_YURERIG_.+")
 
-        is_rigidbody_joint_pattern = re.compile(r"^RIGIDBODY_JOINT_.+")
-        is_rigidbody_pattern = re.compile(r"^RIGIDBODY_.+")
-        is_rigidbody_goal_pattern = re.compile(r"^RIGIDBODY_GOAL_.+")
-        is_controller_boneshape = re.compile(r".+BoneShape$")
+        is_rigidbody_joint_pattern = re.compile(r"^RIGIDBODY_JOINT_YURERIG_.+")
+        is_rigidbody_pattern = re.compile(r"^RIGIDBODY_YURERIG_.+")
+        is_rigidbody_goal_pattern = re.compile(r"^RIGIDBODY_GOAL_YURERIG_.+")
+        is_controller_boneshape = re.compile(r".+BoneShape_YURERIG$")
 
         bpy.ops.object.mode_set(mode="EDIT")
 
@@ -1091,16 +1100,18 @@ class YURERIG_OT_AddExtraJointOperator(bpy.types.Operator):
         props = context.scene.yurerig
         armature: bpy.types.Object = context.active_object
 
-        phys_bone1_name = f"PHYS_{props.selected_ctrl_bone1[5:]}"
-        phys_bone2_name = f"PHYS_{props.selected_ctrl_bone2[5:]}"
+        phys_bone1_name = f"PHYS_YURERIG_{props.selected_ctrl_bone1[5:]}"
+        phys_bone2_name = f"PHYS_YURERIG_{props.selected_ctrl_bone2[5:]}"
         phys_bone1 = armature.pose.bones[phys_bone1_name]
         phys_bone2 = armature.pose.bones[phys_bone2_name]
         bone1_pos = phys_bone1.tail
         bone2_pos = phys_bone2.tail
-        bone1_obj_name = f"RIGIDBODY_{phys_bone1_name[5:]}"
-        bone2_obj_name = f"RIGIDBODY_{phys_bone2_name[5:]}"
+        bone1_obj_name = f"RIGIDBODY_YURERIG_{phys_bone1_name[5:]}"
+        bone2_obj_name = f"RIGIDBODY_YURERIG_{phys_bone2_name[5:]}"
 
-        joint_name = f"RIGIDBODY_JOINT_{phys_bone1_name[5:]}_{phys_bone2_name[5:]}"
+        joint_name = (
+            f"RIGIDBODY_JOINT_YURERIG_{phys_bone1_name[5:]}_{phys_bone2_name[5:]}"
+        )
         joint_obj = bpy.data.objects.new(joint_name, None)
         joint_obj.location = (bone1_pos + bone2_pos) / 2
         bpy.context.scene.rigidbody_world.constraints.objects.link(joint_obj)
@@ -1116,7 +1127,7 @@ class YURERIG_OT_AddExtraJointOperator(bpy.types.Operator):
         self.report(
             {"INFO"},
             "Success Add Extra Joint between "
-            + f"PHYS_{phys_bone1_name} and PHYS_{phys_bone2_name}",
+            + f"PHYS_YURERIG_{phys_bone1_name} and PHYS_YURERIG_{phys_bone2_name}",
         )
 
         return {"FINISHED"}
@@ -1139,9 +1150,11 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
         armature: bpy.types.Object = context.active_object
         selected_bones = context.selected_pose_bones
 
-        is_ctrl_bone_pattern = re.compile(r"^CTRL_.+")
-        is_slider_bone_pattern = re.compile(r"^CTRL_physics_influence_slider_.+")
-        is_rigidbody_joint_pattern = re.compile(r"^RIGIDBODY_JOINT_")
+        is_ctrl_bone_pattern = re.compile(r"^CTRL_YURERIG_.+")
+        is_slider_bone_pattern = re.compile(
+            r"^CTRL_YURERIG_physics_influence_slider_.+"
+        )
+        is_rigidbody_joint_pattern = re.compile(r"^RIGIDBODY_JOINT_YURERIG_")
 
         updated_joints_num = 0
         updated_rigidbody_num = 0
@@ -1160,16 +1173,16 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
 
                 name = b.name[5:]
 
-                ctrl_bone = armature.pose.bones.get(f"CTRL_{name}")
+                ctrl_bone = armature.pose.bones.get(f"CTRL_YURERIG_{name}")
                 if ctrl_bone is not None:
                     bpy.data.objects.remove(ctrl_bone.custom_shape)
                     ctrl_bone.custom_shape = make_controller_object(
-                        f"CTRL_{name}_ControllerBoneShape",
+                        f"CTRL_YURERIG_{name}_ControllerBoneShape_YURERIG",
                         ctrl_bone.head,
                         ctrl_bone.tail,
                     )
 
-                rigidbody_obj = bpy.data.objects.get(f"RIGIDBODY_{name}")
+                rigidbody_obj = bpy.data.objects.get(f"RIGIDBODY_YURERIG_{name}")
                 if rigidbody_obj is not None:
                     rigidbody_obj.rigid_body.mass = (
                         bpy.context.scene.yurerig.rigidbody_mass
@@ -1200,7 +1213,9 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
                     )
                     updated_rigidbody_num += 1
 
-                rigidbody_root_obj = bpy.data.objects.get(f"RIGIDBODY_ROOT_{name}")
+                rigidbody_root_obj = bpy.data.objects.get(
+                    f"RIGIDBODY_YURERIG_{name}_Root"
+                )
                 if rigidbody_root_obj is not None:
                     rigidbody_root_obj.data.vertices[0].co = Vector(
                         (size / 2, -size / 2, size / 2)
@@ -1228,7 +1243,9 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
                     )
                     updated_rigidbody_num += 1
 
-                rigidbody_goal_obj = bpy.data.objects.get(f"RIGIDBODY_GOAL_{name}")
+                rigidbody_goal_obj = bpy.data.objects.get(
+                    f"RIGIDBODY_GOAL_YURERIG_{name}"
+                )
                 if rigidbody_goal_obj is not None:
                     rigidbody_goal_obj.data.vertices[0].co = Vector(
                         (x_size / 2, -length / 2 + gap / 2, z_size / 2)
@@ -1256,7 +1273,7 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
                     )
 
                 rigidbody_bone_shape_obj = bpy.data.objects.get(
-                    f"RIGIDBODY_{name}_BoneShape"
+                    f"RIGIDBODY_YURERIG_{name}_BoneShape_YURERIG"
                 )
                 if rigidbody_bone_shape_obj is not None:
                     rigidbody_bone_shape_obj.data.vertices[0].co = Vector(
@@ -1297,12 +1314,14 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
 
                 bpy.ops.object.mode_set(mode="OBJECT")
 
-                deco_phys_curve = bpy.data.curves.new(type="FONT", name="DECO_PHYS")
+                deco_phys_curve = bpy.data.curves.new(
+                    type="FONT", name="DECO_YURERIG_PHYS"
+                )
                 deco_phys_curve.align_x = "CENTER"
                 deco_phys_curve.align_y = "TOP"
                 deco_phys_curve.size = slider_size / 6
                 deco_phys = bpy.data.objects.new(
-                    "DECO_PHYS", object_data=deco_phys_curve
+                    "DECO_YURERIG_PHYS", object_data=deco_phys_curve
                 )
                 deco_phys.data.body = "PHYS"
                 deco_phys.location = Vector((0, 0, slider_size * 4 / 6))
@@ -1314,11 +1333,13 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
                 bpy.ops.object.convert(target="MESH")
                 context.scene.yurerig.controllers_collection.objects.link(deco_phys)
 
-                deco_fk_curve = bpy.data.curves.new(type="FONT", name="DECO_FK")
+                deco_fk_curve = bpy.data.curves.new(type="FONT", name="DECO_YURERIG_FK")
                 deco_fk_curve.align_x = "CENTER"
                 deco_fk_curve.align_y = "TOP"
                 deco_fk_curve.size = slider_size / 6
-                deco_fk = bpy.data.objects.new("DECO_FK", object_data=deco_fk_curve)
+                deco_fk = bpy.data.objects.new(
+                    "DECO_YURERIG_FK", object_data=deco_fk_curve
+                )
                 deco_fk.data.body = "FK"
                 deco_fk.location = Vector((0, 0, -slider_size / 6))
                 deco_fk.rotation_euler = Vector((math.radians(90), 0, 0))
@@ -1334,7 +1355,7 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
                 bpy.ops.object.mode_set(mode="EDIT")
 
                 slider_bone_pattern = re.compile(
-                    r"CTRL_physics_influence_slider_(\d+)_BoneShape"
+                    r"CTRL_YURERIG_physics_influence_slider_(\d+)_BoneShape_YURERIG"
                 )
 
                 physics_influence_slider_name = b.name
@@ -1343,7 +1364,7 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
                     continue
                 i = match.groups()[0]
                 physics_influence_slider_root_name = (
-                    f"DECO_physics_influence_slider_root_{i}_BoneShape"
+                    f"DECO_YURERIG_physics_influence_slider_root_{i}_BoneShape_YURERIG"
                 )
 
                 bpy.data.objects.remove(
@@ -1400,8 +1421,8 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
 
         bpy.ops.object.mode_set(mode="EDIT")
 
-        rigidbody_pattern = re.compile(r"^RIGIDBODY_([\w\.\-]+)")
-        rigidbody_root_pattern = re.compile(r"^RIGIDBODY_([\w\.\-]+)_Root")
+        rigidbody_pattern = re.compile(r"^RIGIDBODY_YURERIG_([\w\.\-]+)")
+        rigidbody_root_pattern = re.compile(r"^RIGIDBODY_YURERIG_([\w\.\-]+)_Root")
 
         for obj in props.rigidbodies_collection.objects:
             match = rigidbody_root_pattern.match(obj.name)
@@ -1409,10 +1430,10 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
                 continue
             match = rigidbody_pattern.match(obj.name)
             if match is not None:
-                ctrl_bone_name = f"CTRL_{match.groups()[0]}"
+                ctrl_bone_name = f"CTRL_YURERIG_{match.groups()[0]}"
                 ctrl_edit_bone = armature.data.edit_bones[ctrl_bone_name]
                 ctrl_pose_bone = armature.pose.bones[ctrl_bone_name]
-                phys_bone_name = f"PHYS_{match.groups()[0]}"
+                phys_bone_name = f"PHYS_YURERIG_{match.groups()[0]}"
                 phys_edit_bone = armature.data.edit_bones[phys_bone_name]
                 phys_pose_bone = armature.pose.bones[phys_bone_name]
                 phys_edit_bone.head = ctrl_edit_bone.head
@@ -1421,7 +1442,7 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
                 armature.update_from_editmode()
                 phys_pose_bone.rotation_quaternion = ctrl_pose_bone.rotation_quaternion
 
-                rigidbody_obj_name = f"RIGIDBODY_{match.groups()[0]}"
+                rigidbody_obj_name = f"RIGIDBODY_YURERIG_{match.groups()[0]}"
                 rigidbody_obj = bpy.data.objects[rigidbody_obj_name]
                 dir_x = ctrl_pose_bone.x_axis
                 dir_y = ctrl_pose_bone.y_axis
@@ -1433,7 +1454,7 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
                 rigidbody_obj.matrix_world = mat
                 rigidbody_obj.location = (ctrl_pose_bone.tail + ctrl_pose_bone.head) / 2
 
-                rigidbody_goal_obj_name = f"RIGIDBODY_GOAL_{match.groups()[0]}"
+                rigidbody_goal_obj_name = f"RIGIDBODY_GOAL_YURERIG_{match.groups()[0]}"
                 rigidbody_goal_obj = bpy.data.objects[rigidbody_goal_obj_name]
                 dir_x = ctrl_pose_bone.x_axis
                 dir_y = ctrl_pose_bone.y_axis
@@ -1451,14 +1472,14 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
 
         bpy.ops.object.mode_set(mode="POSE")
 
-        joint_root_pattern = re.compile(r"^RIGIDBODY_JOINT_([\w\.\-]+)")
-        joint_pattern = re.compile(r"^RIGIDBODY_JOINT_([\w\.\-]+)_([\w\.\-]+)")
+        joint_root_pattern = re.compile(r"^RIGIDBODY_JOINT_YURERIG_([\w\.\-]+)")
+        joint_pattern = re.compile(r"^RIGIDBODY_JOINT_YURERIG_([\w\.\-]+)_([\w\.\-]+)")
 
         for j in props.joints_collection.objects:
             match = joint_pattern.match(j.name)
             if match is not None:
-                bone1_name = f"PHYS_{match.groups()[0]}"
-                bone2_name = f"PHYS_{match.groups()[1]}"
+                bone1_name = f"PHYS_YURERIG_{match.groups()[0]}"
+                bone2_name = f"PHYS_YURERIG_{match.groups()[1]}"
                 bone1 = armature.pose.bones[bone1_name]
                 bone2 = armature.pose.bones[bone2_name]
                 if bone1.parent == bone2:
@@ -1470,7 +1491,7 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
                 continue
             match = joint_root_pattern.match(j.name)
             if match is not None:
-                bone_name = f"PHYS_{match.groups()[0]}"
+                bone_name = f"PHYS_YURERIG_{match.groups()[0]}"
                 j.location = armature.pose.bones[bone_name].head
                 continue
 
