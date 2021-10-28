@@ -809,10 +809,12 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 bpy.context.scene.rigidbody_world.collection = bpy.data.collections.new(
                     "RigidBody Collection"
                 )
+                bpy.context.scene.rigidbody_world.collection.use_fake_user = True
             if bpy.context.scene.rigidbody_world.constraints is None:
                 bpy.context.scene.rigidbody_world.constraints = (
                     bpy.data.collections.new("RigidBody Constraint Collection")
                 )
+                bpy.context.scene.rigidbody_world.constraints.use_fake_user = True
 
         bpy.ops.object.mode_set(mode="EDIT")
 
