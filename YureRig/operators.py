@@ -1400,8 +1400,8 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
 
         bpy.ops.object.mode_set(mode="EDIT")
 
-        rigidbody_pattern = re.compile(r"^RIGIDBODY_([\w|\.]+)")
-        rigidbody_root_pattern = re.compile(r"^RIGIDBODY_([\w|\.]+)_Root")
+        rigidbody_pattern = re.compile(r"^RIGIDBODY_([\w\.\-]+)")
+        rigidbody_root_pattern = re.compile(r"^RIGIDBODY_([\w\.\-]+)_Root")
 
         for obj in props.rigidbodies_collection.objects:
             match = rigidbody_root_pattern.match(obj.name)
@@ -1451,8 +1451,8 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
 
         bpy.ops.object.mode_set(mode="POSE")
 
-        joint_root_pattern = re.compile(r"^RIGIDBODY_JOINT_([\w|\.]+)")
-        joint_pattern = re.compile(r"^RIGIDBODY_JOINT_([\w|\.]+)_([\w|\.]+)")
+        joint_root_pattern = re.compile(r"^RIGIDBODY_JOINT_([\w\.\-]+)")
+        joint_pattern = re.compile(r"^RIGIDBODY_JOINT_([\w\.\-]+)_([\w\.\-]+)")
 
         for j in props.joints_collection.objects:
             match = joint_pattern.match(j.name)
