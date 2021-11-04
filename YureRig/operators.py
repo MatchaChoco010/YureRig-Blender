@@ -194,6 +194,64 @@ def make_controller_object(name: str, head: Vector, tail: Vector) -> bpy.types.O
     return obj
 
 
+def init_collection() -> None:
+    props = bpy.context.scene.yurerig
+    if props.root_collection is None:
+        if "YureRig" in bpy.data.collections:
+            props.root_collection = bpy.data.collections["YureRig"]
+        else:
+            props.root_collection = bpy.data.collections.new(name="YureRig")
+            bpy.context.scene.collection.children.link(props.root_collection)
+        props.root_collection.hide_viewport = True
+        props.root_collection.hide_render = True
+
+    if props.joints_collection is None:
+        if "YureRig Joints" in bpy.data.collections:
+            props.joints_collection = bpy.data.collections["YureRig Joints"]
+        else:
+            props.joints_collection = bpy.data.collections.new(name="YureRig Joints")
+            props.root_collection.children.link(props.joints_collection)
+
+    if props.rigidbodies_collection is None:
+        if "YureRig RigidBodies" in bpy.data.collections:
+            props.rigidbodies_collection = bpy.data.collections["YureRig RigidBodies"]
+        else:
+            props.rigidbodies_collection = bpy.data.collections.new(
+                name="YureRig RigidBodies"
+            )
+            props.root_collection.children.link(props.rigidbodies_collection)
+        props.rigidbodies_collection.lineart_usage = "EXCLUDE"
+        props.rigidbodies_collection.hide_viewport = True
+        props.rigidbodies_collection.hide_render = True
+
+    if props.rigidbodies_reset_goal_collection is None:
+        if "YureRig RigidBodies Reset Goal" in bpy.data.collections:
+            props.rigidbodies_reset_goal_collection = bpy.data.collections[
+                "YureRig RigidBodies Reset Goal"
+            ]
+        else:
+            props.rigidbodies_reset_goal_collection = bpy.data.collections.new(
+                name="YureRig RigidBodies Reset Goal"
+            )
+            props.root_collection.children.link(props.rigidbodies_reset_goal_collection)
+        props.rigidbodies_reset_goal_collection.lineart_usage = "EXCLUDE"
+        props.rigidbodies_reset_goal_collection.hide_viewport = True
+        props.rigidbodies_reset_goal_collection.hide_render = True
+
+    if props.controllers_collection is None:
+        if "YureRig Controller Objects" in bpy.data.collections:
+            props.controllers_collection = bpy.data.collections[
+                "YureRig Controller Objects"
+            ]
+        else:
+            props.controllers_collection = bpy.data.collections.new(
+                name="YureRig Controller Objects"
+            )
+            props.root_collection.children.link(props.controllers_collection)
+        props.controllers_collection.hide_viewport = True
+        props.controllers_collection.hide_render = True
+
+
 class YURERIG_OT_SetupOperator(bpy.types.Operator):
     """
     Setup DEF_YURERIG_ bones, CTRL_YURERIG_ bones and PHYS_YURERIG_ bones,
@@ -213,69 +271,6 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
                 and len(bpy.context.selected_pose_bones) > 0
             )
         return False
-
-    def init_collection(self) -> None:
-        props = bpy.context.scene.yurerig
-        if props.root_collection is None:
-            if "YureRig" in bpy.data.collections:
-                props.root_collection = bpy.data.collections["YureRig"]
-            else:
-                props.root_collection = bpy.data.collections.new(name="YureRig")
-                bpy.context.scene.collection.children.link(props.root_collection)
-            props.root_collection.hide_viewport = True
-            props.root_collection.hide_render = True
-
-        if props.joints_collection is None:
-            if "YureRig Joints" in bpy.data.collections:
-                props.joints_collection = bpy.data.collections["YureRig Joints"]
-            else:
-                props.joints_collection = bpy.data.collections.new(
-                    name="YureRig Joints"
-                )
-                props.root_collection.children.link(props.joints_collection)
-
-        if props.rigidbodies_collection is None:
-            if "YureRig RigidBodies" in bpy.data.collections:
-                props.rigidbodies_collection = bpy.data.collections[
-                    "YureRig RigidBodies"
-                ]
-            else:
-                props.rigidbodies_collection = bpy.data.collections.new(
-                    name="YureRig RigidBodies"
-                )
-                props.root_collection.children.link(props.rigidbodies_collection)
-            props.rigidbodies_collection.lineart_usage = "EXCLUDE"
-            props.rigidbodies_collection.hide_viewport = True
-            props.rigidbodies_collection.hide_render = True
-
-        if props.rigidbodies_reset_goal_collection is None:
-            if "YureRig RigidBodies Reset Goal" in bpy.data.collections:
-                props.rigidbodies_reset_goal_collection = bpy.data.collections[
-                    "YureRig RigidBodies Reset Goall"
-                ]
-            else:
-                props.rigidbodies_reset_goal_collection = bpy.data.collections.new(
-                    name="YureRig RigidBodies Reset Goal"
-                )
-                props.root_collection.children.link(
-                    props.rigidbodies_reset_goal_collection
-                )
-            props.rigidbodies_reset_goal_collection.lineart_usage = "EXCLUDE"
-            props.rigidbodies_reset_goal_collection.hide_viewport = True
-            props.rigidbodies_reset_goal_collection.hide_render = True
-
-        if props.controllers_collection is None:
-            if "YureRig Controller Objects" in bpy.data.collections:
-                props.controllers_collection = bpy.data.collections[
-                    "YureRig Controller Objects"
-                ]
-            else:
-                props.controllers_collection = bpy.data.collections.new(
-                    name="YureRig Controller Objects"
-                )
-                props.root_collection.children.link(props.controllers_collection)
-            props.controllers_collection.hide_viewport = True
-            props.controllers_collection.hide_render = True
 
     def update_controller_object_radius(
         self, obj: bpy.types.Object, head: Vector, tail: Vector
@@ -531,7 +526,7 @@ class YURERIG_OT_SetupOperator(bpy.types.Operator):
         obj.location = (tail + head) / 2
 
     def execute(self, context: bpy.types.Object) -> Set[str]:
-        self.init_collection()
+        init_collection()
 
         armature: bpy.types.Object = context.active_object
         selected_bones = context.selected_pose_bones
@@ -1001,6 +996,8 @@ class YURERIG_OT_RemoveOperator(bpy.types.Operator):
         return flag
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
+        init_collection()
+
         props = context.scene.yurerig
         armature: bpy.types.Object = context.active_object
 
@@ -1098,6 +1095,8 @@ class YURERIG_OT_AddExtraJointOperator(bpy.types.Operator):
         )
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
+        init_collection()
+
         props = context.scene.yurerig
         armature: bpy.types.Object = context.active_object
 
@@ -1145,6 +1144,8 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
         return is_pose
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
+        init_collection()
+
         props = context.scene.yurerig
         armature: bpy.types.Object = context.active_object
         selected_bones = context.selected_pose_bones
@@ -1242,9 +1243,7 @@ class YURERIG_OT_UpdateParametersOperator(bpy.types.Operator):
                     )
                     updated_rigidbody_num += 1
 
-                rigidbody_goal_obj = bpy.data.objects.get(
-                    f"GOAL_YURERIG_{name}"
-                )
+                rigidbody_goal_obj = bpy.data.objects.get(f"GOAL_YURERIG_{name}")
                 if rigidbody_goal_obj is not None:
                     rigidbody_goal_obj.data.vertices[0].co = Vector(
                         (x_size / 2, -length / 2 + gap / 2, z_size / 2)
@@ -1415,6 +1414,8 @@ class YURERIG_OT_SetRigidBodyAndJointStartPositionOperator(bpy.types.Operator):
         return is_pose
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
+        init_collection()
+
         props = context.scene.yurerig
         armature: bpy.types.Object = context.active_object
 
@@ -1510,6 +1511,8 @@ class YURERIG_OT_UpdateBoneColorOperator(bpy.types.Operator):
         return is_pose
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
+        init_collection()
+
         props = context.scene.yurerig
         armature: bpy.types.Object = context.active_object
 
